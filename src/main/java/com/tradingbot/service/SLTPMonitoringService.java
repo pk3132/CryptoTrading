@@ -30,6 +30,9 @@ public class SLTPMonitoringService {
 
     @Autowired
     private TelegramNotificationService telegramService;
+    
+    @Autowired
+    private com.tradingbot.service.AlertVerificationService alertVerificationService;
 
     private final ScheduledExecutorService scheduler;
     private boolean isMonitoring = false;
@@ -247,7 +250,16 @@ public class SLTPMonitoringService {
                 timestamp
             );
 
-        telegramService.sendTelegramMessage(alertMessage);
+        // Send enhanced alert
+        alertVerificationService.sendEnhancedStopLossAlert(
+            trade.getSymbol(),
+            trade.getType(),
+            trade.getEntryPrice(),
+            trade.getStopLoss(),
+            exitPrice,
+            trade.calculatePnL(exitPrice),
+            "Strategy 1"
+        );
     }
 
     /**
@@ -278,7 +290,16 @@ public class SLTPMonitoringService {
                 timestamp
             );
 
-        telegramService.sendTelegramMessage(alertMessage);
+        // Send enhanced alert
+        alertVerificationService.sendEnhancedTakeProfitAlert(
+            trade.getSymbol(),
+            trade.getType(),
+            trade.getEntryPrice(),
+            trade.getTakeProfit(),
+            exitPrice,
+            trade.calculatePnL(exitPrice),
+            "Strategy 1"
+        );
     }
 
     /**

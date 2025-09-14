@@ -1,5 +1,6 @@
 package com.tradingbot.service;
 
+import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.http.ResponseEntity;
 import java.util.*;
@@ -7,6 +8,7 @@ import java.util.*;
 /**
  * Service to fetch historical candlestick data from Delta Exchange
  */
+@Service
 public class DeltaCandlestickService {
 
     private static final String BASE_URL = "https://api.india.delta.exchange/v2/history/candles";
@@ -138,8 +140,7 @@ public class DeltaCandlestickService {
         System.out.println("Range Percentage: " + String.format("%.2f", ((overallHigh - overallLow) / overallLow) * 100) + "%");
         
         // Get current price for comparison
-        DeltaExchangeService exchangeService = new DeltaExchangeService();
-        Double currentPrice = exchangeService.getCurrentPrice(symbol);
+        Double currentPrice = getCurrentPrice(symbol);
         if (currentPrice != null) {
             System.out.println("Current Price: $" + String.format("%.2f", currentPrice));
             System.out.println("Distance from High: " + String.format("%.2f", ((overallHigh - currentPrice) / currentPrice) * 100) + "%");
@@ -185,15 +186,24 @@ public class DeltaCandlestickService {
         }
     }
 
-    public static void main(String[] args) {
-        DeltaCandlestickService service = new DeltaCandlestickService();
-        
-        // Analyze last 15 candles for BTCUSD
-        service.analyzeLast15Candles("BTCUSD");
-        
-        System.out.println("\n" + "=".repeat(80) + "\n");
-        
-        // Show different resolutions
-        service.getCandlestickDataWithResolutions("BTCUSD");
+    /**
+     * Get current price for a symbol
+     */
+    private Double getCurrentPrice(String symbol) {
+        try {
+            // Get the latest candlestick data
+            Map<String, Object> data = getCandlestickData(symbol, 1, "1m");
+            if (data != null && data.containsKey("result")) {
+                List<Map<String, Object>> candles = (List<Map<String, Object>>) data.get("result");
+                if (candles != null && !candles.isEmpty()) {
+                    Map<String, Object> latest = candles.get(candles.size() - 1);
+                    return Double.parseDouble(latest.get("close").toString());
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Error getting current price for " + symbol + ": " + e.getMessage());
+        }
+        return null;
     }
+
 }
