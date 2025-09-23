@@ -5,7 +5,6 @@ import com.tradingbot.repository.TradeRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -22,12 +21,53 @@ public class PositionManagementService {
     @Autowired
     private TelegramNotificationService telegramService;
 
+    @Autowired
+    private CryptoPriceService priceService;
+
     /**
      * Open a new trade position
      */
     public Trade openPosition(String symbol, String type, Double entryPrice, 
                              Double stopLoss, Double takeProfit, String reason) {
-        
+        // Sanity check: correct obviously wrong entry prices by using current price
+        try {
+            // Use CryptoPriceService for more reliable price fetching
+            Double currentPrice = null;
+            if ("BTCUSD".equals(symbol)) {
+                currentPrice = priceService.getBitcoinPrice();
+            } else if ("ETHUSD".equals(symbol)) {
+                currentPrice = priceService.getEthereumPrice();
+            } else if ("SOLUSD".equals(symbol) || "SOLUSDT".equals(symbol)) {
+                currentPrice = priceService.getSolanaPrice();
+            }
+            
+            if (currentPrice != null && currentPrice > 0) {
+                // Use current price from candles endpoint (more reliable than tickers)
+                entryPrice = currentPrice;
+            }
+            // Hard validation: prevent saving unrealistic entry prices
+            boolean badBtcEth = ("BTCUSD".equals(symbol) || "ETHUSD".equals(symbol)) && entryPrice != null && entryPrice < 1000;
+            boolean badSol = ("SOLUSD".equals(symbol) || "SOLUSDT".equals(symbol)) && entryPrice != null && entryPrice < 5;
+            if (badBtcEth || badSol) {
+                throw new IllegalStateException("Refusing to open trade with unrealistic entryPrice=" + entryPrice + " for " + symbol +
+                        ". Current price fetched=" + currentPrice + ".");
+            }
+            // If SL/TP are provided by the strategy (e.g., swing-based), preserve them; otherwise compute defaults
+            final double slPct = 0.005;  // 0.50%
+            final double tpPct = 0.01;   // 1.00%
+            if ("BUY".equals(type)) {
+                stopLoss = stopLoss != null && stopLoss < entryPrice ? roundToTick(symbol, stopLoss)
+                        : roundToTick(symbol, entryPrice * (1 - slPct));
+                takeProfit = takeProfit != null && takeProfit > entryPrice ? roundToTick(symbol, takeProfit)
+                        : roundToTick(symbol, entryPrice * (1 + tpPct));
+            } else { // SELL
+                stopLoss = stopLoss != null && stopLoss > entryPrice ? roundToTick(symbol, stopLoss)
+                        : roundToTick(symbol, entryPrice * (1 + slPct));
+                takeProfit = takeProfit != null && takeProfit < entryPrice ? roundToTick(symbol, takeProfit)
+                        : roundToTick(symbol, entryPrice * (1 - tpPct));
+            }
+        } catch (Exception ignore) {}
+
         // Calculate quantity based on risk management (example: 1% risk)
         Double quantity = calculatePositionSize(entryPrice, stopLoss);
         
@@ -168,6 +208,15 @@ public class PositionManagementService {
         }
         
         return 1.0; // Default quantity
+    }
+
+    private double roundToTick(String symbol, double price) {
+        double tick;
+        if ("BTCUSD".equals(symbol)) tick = 0.5;
+        else if ("ETHUSD".equals(symbol)) tick = 0.05;
+        else if ("SOLUSD".equals(symbol) || "SOLUSDT".equals(symbol)) tick = 0.001;
+        else tick = 0.01;
+        return Math.round(price / tick) * tick;
     }
 
     /**

@@ -17,48 +17,51 @@ public class AlertVerificationService {
     @Autowired
     private TelegramNotificationService telegramService;
 
-    /**
-     * Send comprehensive alert verification message
-     */
-    public void sendAlertVerificationMessage() {
-        String message = String.format("""
-            🔔 *ALERT VERIFICATION - ALL NOTIFICATIONS ENABLED*
-            
-            📊 *Strategy 1 Alerts:*
-            ✅ Breakout Signals (200-Day MA + Trendline)
-            ✅ Entry Notifications
-            ✅ Stop Loss Alerts
-            ✅ Take Profit Alerts
-            
-            📊 *Strategy 2 Alerts:*
-            ✅ EMA Crossover Signals (9/20)
-            ✅ Pullback Entry Signals
-            ✅ Entry Notifications with EMA Values
-            ✅ Stop Loss Alerts
-            ✅ Take Profit Alerts
-            
-            🛡️ *Monitoring Alerts:*
-            ✅ SL/TP Monitoring (Every 50 seconds)
-            ✅ Position Status Updates
-            ✅ Exit Notifications
-            
-            📱 *Notification Types:*
-            • 🟢 BUY SIGNALS
-            • 📉 SELL SIGNALS  
-            • 🎯 TAKE PROFIT
-            • 🔴 STOP LOSS
-            • 📊 STATUS UPDATES
-            
-            ⏰ *Verification Time:* %s
-            
-            🚀 *All alerts are now active and monitored!*
-            """,
-            LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
-        );
+        /**
+         * Send comprehensive alert verification message
+         */
+        public void sendAlertVerificationMessage() {
+            String message = String.format("""
+                🔔 *ALERT VERIFICATION - AGGRESSIVE CHART TECHNICAL ANALYSIS STRATEGY ENABLED*
+                
+                🔍 *Aggressive Chart Technical Analysis Alerts:*
+                ✅ Price Movement (Uptrend/Downtrend)
+                ✅ Bollinger Bands (Volatility)
+                ✅ Support/Resistance Levels
+                ✅ Candlestick Patterns (Green/Red)
+                ✅ Trend Analysis (SMA5)
+                ✅ Entry Notifications
+                ✅ Stop Loss Alerts
+                ✅ Take Profit Alerts
+                
+                🛡️ *Monitoring Alerts:*
+                ✅ SL/TP Monitoring (Every 50 seconds)
+                ✅ Position Status Updates
+                ✅ Exit Notifications
+                
+                📱 *Notification Types:*
+                • 🟢 BUY SIGNALS (Price Uptrend, Support Bounces, Bullish Patterns)
+                • 📉 SELL SIGNALS (Price Downtrend, Resistance Rejections, Bearish Patterns)
+                • 🎯 TAKE PROFIT
+                • 🔴 STOP LOSS
+                • 📊 STATUS UPDATES
+                
+                ⚡ *Strategy Details:*
+                • Timeframe: 15 minutes
+                • Risk-Reward: 1:2
+                • Symbols: BTCUSD, ETHUSD, SOLUSD
+                • Professional Grade Aggressive Chart Analysis
+                
+                ⏰ *Verification Time:* %s
+                
+                🚀 *Aggressive Chart Technical Analysis Strategy is now active and monitored!*
+                """,
+                LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+            );
 
-        telegramService.sendTelegramMessage(message);
-        System.out.println("✅ Alert verification message sent");
-    }
+            telegramService.sendTelegramMessage(message);
+            System.out.println("✅ Alert verification message sent");
+        }
 
     /**
      * Send Strategy 1 breakout alert with enhanced details
@@ -93,47 +96,86 @@ public class AlertVerificationService {
         System.out.println("✅ Strategy 1 breakout alert sent for " + symbol);
     }
 
-    /**
-     * Send Strategy 2 EMA alert with enhanced details
-     */
-    public void sendStrategy2EMAAlert(String symbol, String type, double entryPrice,
-                                    double stopLoss, double takeProfit, double ema9, 
-                                    double ema20, String trend, String marketCondition, 
-                                    String reason) {
-        String message = String.format("""
-            ⚡ *STRATEGY 2 EMA ALERT*
-            
-            📊 *Symbol:* %s
-            🎯 *Action:* %s
-            💰 *Entry Price:* $%.2f
-            🛡️ *Stop Loss:* $%.2f
-            🎯 *Take Profit:* $%.2f
-            
-            📊 *EMA Analysis:*
-            • EMA9: $%.2f
-            • EMA20: $%.2f
-            • Trend Direction: %s
-            • Market Condition: %s
-            
-            ⚡ *Strategy Details:*
-            • 9/20 EMA Crossover Strategy
-            • 25x Leverage
-            • Risk-Reward Ratio: 1:3
-            • Aggressive Approach
-            
-            📝 *Reason:* %s
-            ⏰ *Time:* %s
-            
-            🚨 *EMA SIGNAL CONFIRMED!*
-            """,
-            symbol, type, entryPrice, stopLoss, takeProfit, ema9, ema20, 
-            trend, marketCondition, reason,
-            LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
-        );
+        /**
+         * Send EMA Trendline breakout alert with enhanced details
+         */
+        public void sendEmaTrendlineAlert(String symbol, String type, double entryPrice,
+                                         double stopLoss, double takeProfit, String reason) {
+            String message = String.format("""
+                🎯 *EMA TRENDLINE BREAKOUT ALERT*
+                
+                📊 *Symbol:* %s
+                🎯 *Action:* %s
+                💰 *Entry Price:* $%.2f
+                🛡️ *Stop Loss:* $%.2f
+                🎯 *Take Profit:* $%.2f
+                
+                📈 *Strategy Analysis:*
+                • EMA 200 Trend Filter
+                • Swing Point Detection
+                • Trendline Breakout Confirmation
+                • 15-Minute Timeframe
+                
+                ⚡ *Strategy Details:*
+                • EMA 200 + Trendline Breakout
+                • Risk-Reward Ratio: 1:2
+                • Market Order Execution
+                • Professional Grade Strategy
+                
+                📝 *Reason:* %s
+                ⏰ *Time:* %s
+                
+                🚨 *TRENDLINE BREAKOUT CONFIRMED!*
+                """,
+                symbol, type, entryPrice, stopLoss, takeProfit, reason,
+                LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+            );
 
-        telegramService.sendTelegramMessage(message);
-        System.out.println("✅ Strategy 2 EMA alert sent for " + symbol);
-    }
+            telegramService.sendTelegramMessage(message);
+            System.out.println("✅ EMA Trendline alert sent for " + symbol);
+        }
+
+        /**
+         * Send EMA 200 + Trendline alert with enhanced details
+         */
+        public void sendEMA200TrendlineAlert(String symbol, String type, double entryPrice,
+                                           double stopLoss, double takeProfit, String reason) {
+            String message = String.format("""
+                🎯 *EMA 200 + TRENDLINE BREAKOUT ALERT*
+                
+                📊 *Symbol:* %s
+                🎯 *Action:* %s
+                💰 *Entry Price:* $%.2f
+                🛡️ *Stop Loss:* $%.2f
+                🎯 *Take Profit:* $%.2f
+                
+                🔍 *Strategy Analysis:*
+                • EMA 200 Trend Filter
+                • Swing Point Detection (Last 5 candles)
+                • Trendline Fitting (Linear Regression)
+                • Resistance/Support Breakouts
+                • 15-Minute Timeframe
+                
+                ⚡ *Strategy Details:*
+                • EMA 200 + Trendline Breakout
+                • BUY: Price > EMA200 + breaks above descending resistance
+                • SELL: Price < EMA200 + breaks below ascending support
+                • Risk-Reward Ratio: 1:2 (2%% SL, 4%% TP)
+                • Market Order Execution
+                • Professional Grade Strategy
+                
+                📝 *Reason:* %s
+                ⏰ *Time:* %s
+                
+                🚨 *TRENDLINE BREAKOUT CONFIRMED!*
+                """,
+                symbol, type, entryPrice, stopLoss, takeProfit, reason,
+                LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+            );
+
+            telegramService.sendTelegramMessage(message);
+            System.out.println("✅ EMA 200 + Trendline alert sent for " + symbol);
+        }
 
     /**
      * Send enhanced stop loss alert

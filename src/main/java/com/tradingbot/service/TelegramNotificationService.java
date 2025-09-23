@@ -1,5 +1,6 @@
 package com.tradingbot.service;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.http.ResponseEntity;
@@ -18,9 +19,11 @@ import java.time.format.DateTimeFormatter;
 @Service
 public class TelegramNotificationService {
 
-    private static final String TELEGRAM_BOT_TOKEN = "8013338174:AAHicTBShgIKtjawhzAZLqbGAzdMnYGZH8w";
-    private static final String TELEGRAM_CHAT_ID = "1974091206";
-    private static final String TELEGRAM_API_URL = "https://api.telegram.org/bot" + TELEGRAM_BOT_TOKEN + "/sendMessage";
+    @Value("${telegram.bot.token}")
+    private String telegramBotToken;
+    
+    @Value("${telegram.chat.id}")
+    private String telegramChatId;
     
     private final RestTemplate restTemplate;
 
@@ -133,13 +136,15 @@ public class TelegramNotificationService {
      */
     public void sendTelegramMessage(String message) {
         try {
+            String telegramApiUrl = "https://api.telegram.org/bot" + telegramBotToken + "/sendMessage";
+            
             // Set headers
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
             
             // Create form data
             MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
-            formData.add("chat_id", TELEGRAM_CHAT_ID);
+            formData.add("chat_id", telegramChatId);
             formData.add("text", message);
             formData.add("parse_mode", "Markdown");
             
@@ -147,7 +152,7 @@ public class TelegramNotificationService {
             HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(formData, headers);
             
             // Send POST request
-            ResponseEntity<String> response = restTemplate.postForEntity(TELEGRAM_API_URL, request, String.class);
+            ResponseEntity<String> response = restTemplate.postForEntity(telegramApiUrl, request, String.class);
             
             if (response.getStatusCode().is2xxSuccessful()) {
                 System.out.println("✅ Telegram notification sent successfully");

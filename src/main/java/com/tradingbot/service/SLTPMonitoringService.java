@@ -194,7 +194,7 @@ public class SLTPMonitoringService {
                 return priceService.getBitcoinPrice();
             } else if (symbol.equals("ETHUSD")) {
                 return priceService.getEthereumPrice();
-            } else if (symbol.equals("SOLUSD")) {
+            } else if (symbol.equals("SOLUSD") || symbol.equals("SOLUSDT")) {
                 return priceService.getSolanaPrice();
             }
         } catch (Exception e) {

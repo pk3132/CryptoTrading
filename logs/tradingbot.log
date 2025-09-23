@@ -1,0 +1,664 @@
+2025-09-20 16:03:12.712 [main] INFO  c.tradingbot.TradingbotApplication - Starting TradingbotApplication using Java 23.0.2 with PID 20304 (C:\Users\prakash.patel\Pictures\Crypto\tradingbot\tradingbot\target\classes started by prakash.patel in C:\Users\prakash.patel\Pictures\Crypto\tradingbot\tradingbot)
+2025-09-20 16:03:12.729 [main] INFO  c.tradingbot.TradingbotApplication - No active profile set, falling back to 1 default profile: "default"
+2025-09-20 16:03:14.670 [main] INFO  o.a.catalina.core.StandardService - Starting service [Tomcat]
+2025-09-20 16:03:14.670 [main] INFO  o.a.catalina.core.StandardEngine - Starting Servlet engine: [Apache Tomcat/10.1.44]
+2025-09-20 16:03:14.750 [main] INFO  o.a.c.c.C.[Tomcat].[localhost].[/] - Initializing Spring embedded WebApplicationContext
+2025-09-20 16:03:15.555 [main] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Starting...
+2025-09-20 16:03:15.790 [main] INFO  com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Added connection com.mysql.cj.jdbc.ConnectionImpl@19dac2d6
+2025-09-20 16:03:15.790 [main] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Start completed.
+2025-09-20 16:03:15.868 [main] WARN  org.hibernate.orm.deprecation - HHH90000025: MySQL8Dialect does not need to be specified explicitly using 'hibernate.dialect' (remove the property setting and it will be selected by default)
+2025-09-20 16:03:15.870 [main] WARN  org.hibernate.orm.deprecation - HHH90000026: MySQL8Dialect has been deprecated; use org.hibernate.dialect.MySQLDialect instead
+2025-09-20 16:03:17.084 [main] WARN  o.s.b.w.s.c.AnnotationConfigServletWebServerApplicationContext - Exception encountered during context initialization - cancelling refresh attempt: org.springframework.beans.factory.UnsatisfiedDependencyException: Error creating bean with name 'tradingbotApplication': Unsatisfied dependency expressed through field 'dualStrategyScheduler': Error creating bean with name 'dualStrategySchedulerService': Unsatisfied dependency expressed through field 'deltaApiClient': Error creating bean with name 'deltaApiClient': Injection of autowired dependencies failed
+2025-09-20 16:03:17.089 [main] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Shutdown initiated...
+2025-09-20 16:03:17.099 [main] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Shutdown completed.
+2025-09-20 16:03:17.102 [main] INFO  o.a.catalina.core.StandardService - Stopping service [Tomcat]
+2025-09-20 16:03:17.136 [main] ERROR o.s.boot.SpringApplication - Application run failed
+org.springframework.beans.factory.UnsatisfiedDependencyException: Error creating bean with name 'tradingbotApplication': Unsatisfied dependency expressed through field 'dualStrategyScheduler': Error creating bean with name 'dualStrategySchedulerService': Unsatisfied dependency expressed through field 'deltaApiClient': Error creating bean with name 'deltaApiClient': Injection of autowired dependencies failed
+	at org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor$AutowiredFieldElement.resolveFieldValue(AutowiredAnnotationBeanPostProcessor.java:788)
+	at org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor$AutowiredFieldElement.inject(AutowiredAnnotationBeanPostProcessor.java:768)
+	at org.springframework.beans.factory.annotation.InjectionMetadata.inject(InjectionMetadata.java:146)
+	at org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor.postProcessProperties(AutowiredAnnotationBeanPostProcessor.java:509)
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.populateBean(AbstractAutowireCapableBeanFactory.java:1459)
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:606)
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:529)
+	at org.springframework.beans.factory.support.AbstractBeanFactory.lambda$doGetBean$0(AbstractBeanFactory.java:339)
+	at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:373)
+	at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:337)
+	at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:202)
+	at org.springframework.beans.factory.support.DefaultListableBeanFactory.instantiateSingleton(DefaultListableBeanFactory.java:1222)
+	at org.springframework.beans.factory.support.DefaultListableBeanFactory.preInstantiateSingleton(DefaultListableBeanFactory.java:1188)
+	at org.springframework.beans.factory.support.DefaultListableBeanFactory.preInstantiateSingletons(DefaultListableBeanFactory.java:1123)
+	at org.springframework.context.support.AbstractApplicationContext.finishBeanFactoryInitialization(AbstractApplicationContext.java:987)
+	at org.springframework.context.support.AbstractApplicationContext.refresh(AbstractApplicationContext.java:627)
+	at org.springframework.boot.web.servlet.context.ServletWebServerApplicationContext.refresh(ServletWebServerApplicationContext.java:146)
+	at org.springframework.boot.SpringApplication.refresh(SpringApplication.java:752)
+	at org.springframework.boot.SpringApplication.refreshContext(SpringApplication.java:439)
+	at org.springframework.boot.SpringApplication.run(SpringApplication.java:318)
+	at org.springframework.boot.SpringApplication.run(SpringApplication.java:1361)
+	at org.springframework.boot.SpringApplication.run(SpringApplication.java:1350)
+	at com.tradingbot.TradingbotApplication.main(TradingbotApplication.java:46)
+Caused by: org.springframework.beans.factory.UnsatisfiedDependencyException: Error creating bean with name 'dualStrategySchedulerService': Unsatisfied dependency expressed through field 'deltaApiClient': Error creating bean with name 'deltaApiClient': Injection of autowired dependencies failed
+	at org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor$AutowiredFieldElement.resolveFieldValue(AutowiredAnnotationBeanPostProcessor.java:788)
+	at org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor$AutowiredFieldElement.inject(AutowiredAnnotationBeanPostProcessor.java:768)
+	at org.springframework.beans.factory.annotation.InjectionMetadata.inject(InjectionMetadata.java:146)
+	at org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor.postProcessProperties(AutowiredAnnotationBeanPostProcessor.java:509)
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.populateBean(AbstractAutowireCapableBeanFactory.java:1459)
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:606)
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:529)
+	at org.springframework.beans.factory.support.AbstractBeanFactory.lambda$doGetBean$0(AbstractBeanFactory.java:339)
+	at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:373)
+	at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:337)
+	at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:202)
+	at org.springframework.beans.factory.config.DependencyDescriptor.resolveCandidate(DependencyDescriptor.java:254)
+	at org.springframework.beans.factory.support.DefaultListableBeanFactory.doResolveDependency(DefaultListableBeanFactory.java:1752)
+	at org.springframework.beans.factory.support.DefaultListableBeanFactory.resolveDependency(DefaultListableBeanFactory.java:1635)
+	at org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor$AutowiredFieldElement.resolveFieldValue(AutowiredAnnotationBeanPostProcessor.java:785)
+	... 22 common frames omitted
+Caused by: org.springframework.beans.factory.BeanCreationException: Error creating bean with name 'deltaApiClient': Injection of autowired dependencies failed
+	at org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor.postProcessProperties(AutowiredAnnotationBeanPostProcessor.java:515)
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.populateBean(AbstractAutowireCapableBeanFactory.java:1459)
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:606)
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:529)
+	at org.springframework.beans.factory.support.AbstractBeanFactory.lambda$doGetBean$0(AbstractBeanFactory.java:339)
+	at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:373)
+	at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:337)
+	at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:202)
+	at org.springframework.beans.factory.support.DefaultListableBeanFactory.doResolveDependency(DefaultListableBeanFactory.java:1690)
+	at org.springframework.beans.factory.support.DefaultListableBeanFactory.resolveDependency(DefaultListableBeanFactory.java:1635)
+	at org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor$AutowiredFieldElement.resolveFieldValue(AutowiredAnnotationBeanPostProcessor.java:785)
+	... 36 common frames omitted
+Caused by: org.springframework.util.PlaceholderResolutionException: Could not resolve placeholder 'DELTA_API_KEY' in value "${DELTA_API_KEY}" <-- "${delta.api.key:}"
+	at org.springframework.util.PlaceholderResolutionException.withValue(PlaceholderResolutionException.java:81)
+	at org.springframework.util.PlaceholderParser$ParsedValue.resolve(PlaceholderParser.java:423)
+	at org.springframework.util.PlaceholderParser.replacePlaceholders(PlaceholderParser.java:128)
+	at org.springframework.util.PropertyPlaceholderHelper.parseStringValue(PropertyPlaceholderHelper.java:118)
+	at org.springframework.util.PropertyPlaceholderHelper.replacePlaceholders(PropertyPlaceholderHelper.java:114)
+	at org.springframework.core.env.AbstractPropertyResolver.doResolvePlaceholders(AbstractPropertyResolver.java:293)
+	at org.springframework.core.env.AbstractPropertyResolver.resolveRequiredPlaceholders(AbstractPropertyResolver.java:264)
+	at org.springframework.context.support.PropertySourcesPlaceholderConfigurer.lambda$processProperties$0(PropertySourcesPlaceholderConfigurer.java:186)
+	at org.springframework.beans.factory.support.AbstractBeanFactory.resolveEmbeddedValue(AbstractBeanFactory.java:971)
+	at org.springframework.beans.factory.support.DefaultListableBeanFactory.doResolveDependency(DefaultListableBeanFactory.java:1657)
+	at org.springframework.beans.factory.support.DefaultListableBeanFactory.resolveDependency(DefaultListableBeanFactory.java:1635)
+	at org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor$AutowiredFieldElement.resolveFieldValue(AutowiredAnnotationBeanPostProcessor.java:785)
+	at org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor$AutowiredFieldElement.inject(AutowiredAnnotationBeanPostProcessor.java:768)
+	at org.springframework.beans.factory.annotation.InjectionMetadata.inject(InjectionMetadata.java:146)
+	at org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor.postProcessProperties(AutowiredAnnotationBeanPostProcessor.java:509)
+	... 46 common frames omitted
+2025-09-20 16:03:17.143 [main] ERROR c.tradingbot.TradingbotApplication - ❌ Failed to start Trading Bot Application
+org.springframework.beans.factory.UnsatisfiedDependencyException: Error creating bean with name 'tradingbotApplication': Unsatisfied dependency expressed through field 'dualStrategyScheduler': Error creating bean with name 'dualStrategySchedulerService': Unsatisfied dependency expressed through field 'deltaApiClient': Error creating bean with name 'deltaApiClient': Injection of autowired dependencies failed
+	at org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor$AutowiredFieldElement.resolveFieldValue(AutowiredAnnotationBeanPostProcessor.java:788)
+	at org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor$AutowiredFieldElement.inject(AutowiredAnnotationBeanPostProcessor.java:768)
+	at org.springframework.beans.factory.annotation.InjectionMetadata.inject(InjectionMetadata.java:146)
+	at org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor.postProcessProperties(AutowiredAnnotationBeanPostProcessor.java:509)
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.populateBean(AbstractAutowireCapableBeanFactory.java:1459)
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:606)
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:529)
+	at org.springframework.beans.factory.support.AbstractBeanFactory.lambda$doGetBean$0(AbstractBeanFactory.java:339)
+	at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:373)
+	at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:337)
+	at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:202)
+	at org.springframework.beans.factory.support.DefaultListableBeanFactory.instantiateSingleton(DefaultListableBeanFactory.java:1222)
+	at org.springframework.beans.factory.support.DefaultListableBeanFactory.preInstantiateSingleton(DefaultListableBeanFactory.java:1188)
+	at org.springframework.beans.factory.support.DefaultListableBeanFactory.preInstantiateSingletons(DefaultListableBeanFactory.java:1123)
+	at org.springframework.context.support.AbstractApplicationContext.finishBeanFactoryInitialization(AbstractApplicationContext.java:987)
+	at org.springframework.context.support.AbstractApplicationContext.refresh(AbstractApplicationContext.java:627)
+	at org.springframework.boot.web.servlet.context.ServletWebServerApplicationContext.refresh(ServletWebServerApplicationContext.java:146)
+	at org.springframework.boot.SpringApplication.refresh(SpringApplication.java:752)
+	at org.springframework.boot.SpringApplication.refreshContext(SpringApplication.java:439)
+	at org.springframework.boot.SpringApplication.run(SpringApplication.java:318)
+	at org.springframework.boot.SpringApplication.run(SpringApplication.java:1361)
+	at org.springframework.boot.SpringApplication.run(SpringApplication.java:1350)
+	at com.tradingbot.TradingbotApplication.main(TradingbotApplication.java:46)
+Caused by: org.springframework.beans.factory.UnsatisfiedDependencyException: Error creating bean with name 'dualStrategySchedulerService': Unsatisfied dependency expressed through field 'deltaApiClient': Error creating bean with name 'deltaApiClient': Injection of autowired dependencies failed
+	at org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor$AutowiredFieldElement.resolveFieldValue(AutowiredAnnotationBeanPostProcessor.java:788)
+	at org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor$AutowiredFieldElement.inject(AutowiredAnnotationBeanPostProcessor.java:768)
+	at org.springframework.beans.factory.annotation.InjectionMetadata.inject(InjectionMetadata.java:146)
+	at org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor.postProcessProperties(AutowiredAnnotationBeanPostProcessor.java:509)
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.populateBean(AbstractAutowireCapableBeanFactory.java:1459)
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:606)
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:529)
+	at org.springframework.beans.factory.support.AbstractBeanFactory.lambda$doGetBean$0(AbstractBeanFactory.java:339)
+	at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:373)
+	at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:337)
+	at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:202)
+	at org.springframework.beans.factory.config.DependencyDescriptor.resolveCandidate(DependencyDescriptor.java:254)
+	at org.springframework.beans.factory.support.DefaultListableBeanFactory.doResolveDependency(DefaultListableBeanFactory.java:1752)
+	at org.springframework.beans.factory.support.DefaultListableBeanFactory.resolveDependency(DefaultListableBeanFactory.java:1635)
+	at org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor$AutowiredFieldElement.resolveFieldValue(AutowiredAnnotationBeanPostProcessor.java:785)
+	... 22 common frames omitted
+Caused by: org.springframework.beans.factory.BeanCreationException: Error creating bean with name 'deltaApiClient': Injection of autowired dependencies failed
+	at org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor.postProcessProperties(AutowiredAnnotationBeanPostProcessor.java:515)
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.populateBean(AbstractAutowireCapableBeanFactory.java:1459)
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:606)
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:529)
+	at org.springframework.beans.factory.support.AbstractBeanFactory.lambda$doGetBean$0(AbstractBeanFactory.java:339)
+	at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:373)
+	at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:337)
+	at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:202)
+	at org.springframework.beans.factory.support.DefaultListableBeanFactory.doResolveDependency(DefaultListableBeanFactory.java:1690)
+	at org.springframework.beans.factory.support.DefaultListableBeanFactory.resolveDependency(DefaultListableBeanFactory.java:1635)
+	at org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor$AutowiredFieldElement.resolveFieldValue(AutowiredAnnotationBeanPostProcessor.java:785)
+	... 36 common frames omitted
+Caused by: org.springframework.util.PlaceholderResolutionException: Could not resolve placeholder 'DELTA_API_KEY' in value "${DELTA_API_KEY}" <-- "${delta.api.key:}"
+	at org.springframework.util.PlaceholderResolutionException.withValue(PlaceholderResolutionException.java:81)
+	at org.springframework.util.PlaceholderParser$ParsedValue.resolve(PlaceholderParser.java:423)
+	at org.springframework.util.PlaceholderParser.replacePlaceholders(PlaceholderParser.java:128)
+	at org.springframework.util.PropertyPlaceholderHelper.parseStringValue(PropertyPlaceholderHelper.java:118)
+	at org.springframework.util.PropertyPlaceholderHelper.replacePlaceholders(PropertyPlaceholderHelper.java:114)
+	at org.springframework.core.env.AbstractPropertyResolver.doResolvePlaceholders(AbstractPropertyResolver.java:293)
+	at org.springframework.core.env.AbstractPropertyResolver.resolveRequiredPlaceholders(AbstractPropertyResolver.java:264)
+	at org.springframework.context.support.PropertySourcesPlaceholderConfigurer.lambda$processProperties$0(PropertySourcesPlaceholderConfigurer.java:186)
+	at org.springframework.beans.factory.support.AbstractBeanFactory.resolveEmbeddedValue(AbstractBeanFactory.java:971)
+	at org.springframework.beans.factory.support.DefaultListableBeanFactory.doResolveDependency(DefaultListableBeanFactory.java:1657)
+	at org.springframework.beans.factory.support.DefaultListableBeanFactory.resolveDependency(DefaultListableBeanFactory.java:1635)
+	at org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor$AutowiredFieldElement.resolveFieldValue(AutowiredAnnotationBeanPostProcessor.java:785)
+	at org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor$AutowiredFieldElement.inject(AutowiredAnnotationBeanPostProcessor.java:768)
+	at org.springframework.beans.factory.annotation.InjectionMetadata.inject(InjectionMetadata.java:146)
+	at org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor.postProcessProperties(AutowiredAnnotationBeanPostProcessor.java:509)
+	... 46 common frames omitted
+2025-09-20 16:05:10.108 [main] INFO  c.tradingbot.TradingbotApplication - Starting TradingbotApplication using Java 23.0.2 with PID 24612 (C:\Users\prakash.patel\Pictures\Crypto\tradingbot\tradingbot\target\classes started by prakash.patel in C:\Users\prakash.patel\Pictures\Crypto\tradingbot\tradingbot)
+2025-09-20 16:05:10.111 [main] INFO  c.tradingbot.TradingbotApplication - No active profile set, falling back to 1 default profile: "default"
+2025-09-20 16:05:11.896 [main] INFO  o.a.catalina.core.StandardService - Starting service [Tomcat]
+2025-09-20 16:05:11.897 [main] INFO  o.a.catalina.core.StandardEngine - Starting Servlet engine: [Apache Tomcat/10.1.44]
+2025-09-20 16:05:11.970 [main] INFO  o.a.c.c.C.[Tomcat].[localhost].[/] - Initializing Spring embedded WebApplicationContext
+2025-09-20 16:05:12.734 [main] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Starting...
+2025-09-20 16:05:12.963 [main] INFO  com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Added connection com.mysql.cj.jdbc.ConnectionImpl@7bb4ed71
+2025-09-20 16:05:12.965 [main] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Start completed.
+2025-09-20 16:05:13.043 [main] WARN  org.hibernate.orm.deprecation - HHH90000025: MySQL8Dialect does not need to be specified explicitly using 'hibernate.dialect' (remove the property setting and it will be selected by default)
+2025-09-20 16:05:13.043 [main] WARN  org.hibernate.orm.deprecation - HHH90000026: MySQL8Dialect has been deprecated; use org.hibernate.dialect.MySQLDialect instead
+2025-09-20 16:05:15.375 [main] WARN  o.s.b.a.o.j.JpaBaseConfiguration$JpaWebConfiguration - spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
+2025-09-20 16:05:15.837 [main] INFO  c.tradingbot.TradingbotApplication - Started TradingbotApplication in 6.465 seconds (process running for 7.189)
+2025-09-20 16:05:15.842 [main] INFO  c.tradingbot.TradingbotApplication - 🔄 CommandLineRunner started - Initializing scheduler...
+2025-09-20 16:05:15.843 [main] INFO  c.tradingbot.TradingbotApplication - 🚀 INITIALIZING AGGRESSIVE CHART TECHNICAL ANALYSIS STRATEGY SCHEDULER
+2025-09-20 16:05:15.844 [main] INFO  c.tradingbot.TradingbotApplication - ===================================================
+2025-09-20 16:05:15.844 [main] INFO  c.tradingbot.TradingbotApplication - 📋 Starting scheduler initialization process...
+2025-09-20 16:05:15.844 [main] INFO  c.tradingbot.TradingbotApplication - 📱 Sending startup notification to Telegram...
+2025-09-20 16:05:15.845 [scheduling-1] INFO  c.t.s.DualStrategySchedulerService - 🎯 AGGRESSIVE CHART STRATEGY EXECUTION #1 - 2025-09-20 16:05:15
+2025-09-20 16:05:15.845 [scheduling-1] INFO  c.t.s.DualStrategySchedulerService - 📊 Strategy: Aggressive Chart Technical Analysis
+2025-09-20 16:05:15.846 [scheduling-1] INFO  c.t.s.DualStrategySchedulerService - 📈 Timeframe: 15 minutes
+2025-09-20 16:05:15.846 [scheduling-1] INFO  c.t.s.DualStrategySchedulerService - ⚡ Risk-Reward: 1:2
+2025-09-20 16:05:15.846 [scheduling-1] INFO  c.t.s.DualStrategySchedulerService - 🔍 Chart Elements: Price Movement, Bollinger Bands, Support/Resistance, Candlestick Patterns, Trends
+2025-09-20 16:05:15.846 [scheduling-1] DEBUG c.t.s.DualStrategySchedulerService - Monitoring symbols: BTCUSD, ETHUSD, SOLUSD
+2025-09-20 16:05:15.847 [scheduling-1] DEBUG c.t.s.DualStrategySchedulerService - Processing Aggressive Chart Strategy for symbol: BTCUSD
+2025-09-20 16:05:15.847 [scheduling-1] DEBUG c.t.s.DualStrategySchedulerService - 🔍 Aggressive Chart Strategy checking BTCUSD...
+2025-09-20 16:05:16.018 [scheduling-1] DEBUG org.hibernate.SQL - 
+    select
+        t1_0.id,
+        t1_0.entry_price,
+        t1_0.entry_time,
+        t1_0.exit_price,
+        t1_0.exit_reason,
+        t1_0.exit_time,
+        t1_0.pnl,
+        t1_0.quantity,
+        t1_0.reason,
+        t1_0.status,
+        t1_0.stop_loss,
+        t1_0.symbol,
+        t1_0.take_profit,
+        t1_0.type 
+    from
+        trades t1_0 
+    where
+        t1_0.symbol=? 
+        and t1_0.status=?
+2025-09-20 16:05:16.098 [scheduling-1] DEBUG org.hibernate.SQL - 
+    select
+        t1_0.id,
+        t1_0.entry_price,
+        t1_0.entry_time,
+        t1_0.exit_price,
+        t1_0.exit_reason,
+        t1_0.exit_time,
+        t1_0.pnl,
+        t1_0.quantity,
+        t1_0.reason,
+        t1_0.status,
+        t1_0.stop_loss,
+        t1_0.symbol,
+        t1_0.take_profit,
+        t1_0.type 
+    from
+        trades t1_0 
+    where
+        t1_0.symbol=? 
+        and t1_0.status=?
+2025-09-20 16:05:16.104 [scheduling-1] DEBUG c.t.s.DualStrategySchedulerService - 📊 Fetching historical data for BTCUSD (Aggressive Chart needs 500 candles)
+2025-09-20 16:05:16.811 [scheduling-1] DEBUG c.t.s.DualStrategySchedulerService - ✅ Retrieved 500 candles for BTCUSD Aggressive Chart analysis
+2025-09-20 16:05:16.812 [scheduling-1] DEBUG c.t.s.DualStrategySchedulerService - 🔍 Checking for Aggressive Chart signals for BTCUSD
+2025-09-20 16:05:16.817 [scheduling-1] INFO  c.t.s.DualStrategySchedulerService - 🚨 AGGRESSIVE CHART SIGNAL DETECTED: 5 signals for BTCUSD
+2025-09-20 16:05:16.817 [scheduling-1] INFO  c.t.s.DualStrategySchedulerService - 🚨 SIGNAL: BUY BTCUSD at $116511.5 - Bollinger Lower Band
+2025-09-20 16:05:16.817 [scheduling-1] INFO  c.t.s.DualStrategySchedulerService - 🎯 Processing Aggressive Chart signal for BTCUSD: BUY at $116511.5 - Bollinger Lower Band
+2025-09-20 16:05:16.818 [scheduling-1] DEBUG c.t.s.DualStrategySchedulerService - Opening Aggressive Chart position for BTCUSD
+2025-09-20 16:05:16.856 [scheduling-1] DEBUG org.hibernate.SQL - 
+    insert 
+    into
+        trades
+        (entry_price, entry_time, exit_price, exit_reason, exit_time, pnl, quantity, reason, status, stop_loss, symbol, take_profit, type) 
+    values
+        (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+2025-09-20 16:05:17.862 [main] INFO  c.tradingbot.TradingbotApplication - ✅ Startup notification sent successfully
+2025-09-20 16:05:17.864 [main] INFO  c.tradingbot.TradingbotApplication - 🛡️ Starting SL/TP monitoring service...
+2025-09-20 16:05:17.867 [main] INFO  c.tradingbot.TradingbotApplication - ✅ SL/TP monitoring service started
+2025-09-20 16:05:17.869 [main] INFO  c.tradingbot.TradingbotApplication - ✅ Aggressive Chart Technical Analysis Strategy Scheduler is now active!
+2025-09-20 16:05:17.870 [main] INFO  c.tradingbot.TradingbotApplication - 📱 Check your Telegram for aggressive chart pattern notifications!
+2025-09-20 16:05:17.873 [main] INFO  c.tradingbot.TradingbotApplication - ⏰ Strategy runs every 15 minutes
+2025-09-20 16:05:17.874 [main] INFO  c.tradingbot.TradingbotApplication - 📢 Sending alert verification message...
+2025-09-20 16:05:17.880 [pool-2-thread-1] DEBUG org.hibernate.SQL - 
+    select
+        t1_0.id,
+        t1_0.entry_price,
+        t1_0.entry_time,
+        t1_0.exit_price,
+        t1_0.exit_reason,
+        t1_0.exit_time,
+        t1_0.pnl,
+        t1_0.quantity,
+        t1_0.reason,
+        t1_0.status,
+        t1_0.stop_loss,
+        t1_0.symbol,
+        t1_0.take_profit,
+        t1_0.type 
+    from
+        trades t1_0 
+    where
+        t1_0.status=?
+2025-09-20 16:05:18.020 [scheduling-1] DEBUG c.t.s.DualStrategySchedulerService - ✅ Aggressive Chart position opened for BTCUSD
+2025-09-20 16:05:18.023 [scheduling-1] DEBUG c.t.s.DualStrategySchedulerService - Sending Aggressive Chart alert for BTCUSD
+2025-09-20 16:05:18.292 [main] INFO  c.tradingbot.TradingbotApplication - ✅ Alert verification message sent
+2025-09-20 16:05:18.292 [main] INFO  c.tradingbot.TradingbotApplication - 🎉 Aggressive Chart Technical Analysis Strategy initialization completed successfully!
+2025-09-20 16:05:18.293 [main] INFO  c.tradingbot.TradingbotApplication - ✅ CommandLineRunner completed successfully
+2025-09-20 16:05:18.298 [main] INFO  c.tradingbot.TradingbotApplication - ✅ Trading Bot Application started successfully!
+2025-09-20 16:05:18.451 [scheduling-1] INFO  c.t.s.DualStrategySchedulerService - ✅ Aggressive Chart position opened and notification sent for BTCUSD
+2025-09-20 16:05:18.453 [scheduling-1] INFO  c.t.s.DualStrategySchedulerService - 🚨 SIGNAL: SELL BTCUSD at $116511.5 - Bollinger Upper Band
+2025-09-20 16:05:18.454 [scheduling-1] INFO  c.t.s.DualStrategySchedulerService - 🎯 Processing Aggressive Chart signal for BTCUSD: SELL at $116511.5 - Bollinger Upper Band
+2025-09-20 16:05:18.456 [scheduling-1] DEBUG c.t.s.DualStrategySchedulerService - Opening Aggressive Chart position for BTCUSD
+2025-09-20 16:05:18.462 [scheduling-1] DEBUG org.hibernate.SQL - 
+    insert 
+    into
+        trades
+        (entry_price, entry_time, exit_price, exit_reason, exit_time, pnl, quantity, reason, status, stop_loss, symbol, take_profit, type) 
+    values
+        (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+2025-09-20 16:05:19.786 [scheduling-1] DEBUG c.t.s.DualStrategySchedulerService - ✅ Aggressive Chart position opened for BTCUSD
+2025-09-20 16:05:19.788 [scheduling-1] DEBUG c.t.s.DualStrategySchedulerService - Sending Aggressive Chart alert for BTCUSD
+2025-09-20 16:05:20.195 [scheduling-1] INFO  c.t.s.DualStrategySchedulerService - ✅ Aggressive Chart position opened and notification sent for BTCUSD
+2025-09-20 16:05:20.196 [scheduling-1] INFO  c.t.s.DualStrategySchedulerService - 🚨 SIGNAL: BUY BTCUSD at $116511.5 - Support Level
+2025-09-20 16:05:20.197 [scheduling-1] INFO  c.t.s.DualStrategySchedulerService - 🎯 Processing Aggressive Chart signal for BTCUSD: BUY at $116511.5 - Support Level
+2025-09-20 16:05:20.199 [scheduling-1] DEBUG c.t.s.DualStrategySchedulerService - Opening Aggressive Chart position for BTCUSD
+2025-09-20 16:05:20.205 [scheduling-1] DEBUG org.hibernate.SQL - 
+    insert 
+    into
+        trades
+        (entry_price, entry_time, exit_price, exit_reason, exit_time, pnl, quantity, reason, status, stop_loss, symbol, take_profit, type) 
+    values
+        (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+2025-09-20 16:05:20.800 [scheduling-1] DEBUG c.t.s.DualStrategySchedulerService - ✅ Aggressive Chart position opened for BTCUSD
+2025-09-20 16:05:20.802 [scheduling-1] DEBUG c.t.s.DualStrategySchedulerService - Sending Aggressive Chart alert for BTCUSD
+2025-09-20 16:05:21.218 [scheduling-1] INFO  c.t.s.DualStrategySchedulerService - ✅ Aggressive Chart position opened and notification sent for BTCUSD
+2025-09-20 16:05:21.219 [scheduling-1] INFO  c.t.s.DualStrategySchedulerService - 🚨 SIGNAL: SELL BTCUSD at $116511.5 - Resistance Level
+2025-09-20 16:05:21.221 [scheduling-1] INFO  c.t.s.DualStrategySchedulerService - 🎯 Processing Aggressive Chart signal for BTCUSD: SELL at $116511.5 - Resistance Level
+2025-09-20 16:05:21.222 [scheduling-1] DEBUG c.t.s.DualStrategySchedulerService - Opening Aggressive Chart position for BTCUSD
+2025-09-20 16:05:21.227 [scheduling-1] DEBUG org.hibernate.SQL - 
+    insert 
+    into
+        trades
+        (entry_price, entry_time, exit_price, exit_reason, exit_time, pnl, quantity, reason, status, stop_loss, symbol, take_profit, type) 
+    values
+        (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+2025-09-20 16:05:21.653 [scheduling-1] DEBUG c.t.s.DualStrategySchedulerService - ✅ Aggressive Chart position opened for BTCUSD
+2025-09-20 16:05:21.654 [scheduling-1] DEBUG c.t.s.DualStrategySchedulerService - Sending Aggressive Chart alert for BTCUSD
+2025-09-20 16:05:22.054 [scheduling-1] INFO  c.t.s.DualStrategySchedulerService - ✅ Aggressive Chart position opened and notification sent for BTCUSD
+2025-09-20 16:05:22.055 [scheduling-1] INFO  c.t.s.DualStrategySchedulerService - 🚨 SIGNAL: BUY BTCUSD at $116511.5 - Price Above SMA5
+2025-09-20 16:05:22.056 [scheduling-1] INFO  c.t.s.DualStrategySchedulerService - 🎯 Processing Aggressive Chart signal for BTCUSD: BUY at $116511.5 - Price Above SMA5
+2025-09-20 16:05:22.057 [scheduling-1] DEBUG c.t.s.DualStrategySchedulerService - Opening Aggressive Chart position for BTCUSD
+2025-09-20 16:05:22.063 [scheduling-1] DEBUG org.hibernate.SQL - 
+    insert 
+    into
+        trades
+        (entry_price, entry_time, exit_price, exit_reason, exit_time, pnl, quantity, reason, status, stop_loss, symbol, take_profit, type) 
+    values
+        (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+2025-09-20 16:05:23.186 [scheduling-1] DEBUG c.t.s.DualStrategySchedulerService - ✅ Aggressive Chart position opened for BTCUSD
+2025-09-20 16:05:23.186 [scheduling-1] DEBUG c.t.s.DualStrategySchedulerService - Sending Aggressive Chart alert for BTCUSD
+2025-09-20 16:05:23.590 [scheduling-1] INFO  c.t.s.DualStrategySchedulerService - ✅ Aggressive Chart position opened and notification sent for BTCUSD
+2025-09-20 16:05:23.591 [scheduling-1] DEBUG c.t.s.DualStrategySchedulerService - Processing Aggressive Chart Strategy for symbol: ETHUSD
+2025-09-20 16:05:23.592 [scheduling-1] DEBUG c.t.s.DualStrategySchedulerService - 🔍 Aggressive Chart Strategy checking ETHUSD...
+2025-09-20 16:05:23.599 [scheduling-1] DEBUG org.hibernate.SQL - 
+    select
+        t1_0.id,
+        t1_0.entry_price,
+        t1_0.entry_time,
+        t1_0.exit_price,
+        t1_0.exit_reason,
+        t1_0.exit_time,
+        t1_0.pnl,
+        t1_0.quantity,
+        t1_0.reason,
+        t1_0.status,
+        t1_0.stop_loss,
+        t1_0.symbol,
+        t1_0.take_profit,
+        t1_0.type 
+    from
+        trades t1_0 
+    where
+        t1_0.symbol=? 
+        and t1_0.status=?
+2025-09-20 16:05:23.613 [scheduling-1] DEBUG org.hibernate.SQL - 
+    select
+        t1_0.id,
+        t1_0.entry_price,
+        t1_0.entry_time,
+        t1_0.exit_price,
+        t1_0.exit_reason,
+        t1_0.exit_time,
+        t1_0.pnl,
+        t1_0.quantity,
+        t1_0.reason,
+        t1_0.status,
+        t1_0.stop_loss,
+        t1_0.symbol,
+        t1_0.take_profit,
+        t1_0.type 
+    from
+        trades t1_0 
+    where
+        t1_0.symbol=? 
+        and t1_0.status=?
+2025-09-20 16:05:23.618 [scheduling-1] DEBUG c.t.s.DualStrategySchedulerService - 📊 Fetching historical data for ETHUSD (Aggressive Chart needs 500 candles)
+2025-09-20 16:05:24.361 [scheduling-1] DEBUG c.t.s.DualStrategySchedulerService - ✅ Retrieved 500 candles for ETHUSD Aggressive Chart analysis
+2025-09-20 16:05:24.364 [scheduling-1] DEBUG c.t.s.DualStrategySchedulerService - 🔍 Checking for Aggressive Chart signals for ETHUSD
+2025-09-20 16:05:24.369 [scheduling-1] INFO  c.t.s.DualStrategySchedulerService - 🚨 AGGRESSIVE CHART SIGNAL DETECTED: 3 signals for ETHUSD
+2025-09-20 16:05:24.370 [scheduling-1] INFO  c.t.s.DualStrategySchedulerService - 🚨 SIGNAL: SELL ETHUSD at $4662.06 - Bollinger Upper Band
+2025-09-20 16:05:24.371 [scheduling-1] INFO  c.t.s.DualStrategySchedulerService - 🎯 Processing Aggressive Chart signal for ETHUSD: SELL at $4662.06 - Bollinger Upper Band
+2025-09-20 16:05:24.372 [scheduling-1] DEBUG c.t.s.DualStrategySchedulerService - Opening Aggressive Chart position for ETHUSD
+2025-09-20 16:05:24.378 [scheduling-1] DEBUG org.hibernate.SQL - 
+    insert 
+    into
+        trades
+        (entry_price, entry_time, exit_price, exit_reason, exit_time, pnl, quantity, reason, status, stop_loss, symbol, take_profit, type) 
+    values
+        (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+2025-09-20 16:05:24.781 [scheduling-1] DEBUG c.t.s.DualStrategySchedulerService - ✅ Aggressive Chart position opened for ETHUSD
+2025-09-20 16:05:24.782 [scheduling-1] DEBUG c.t.s.DualStrategySchedulerService - Sending Aggressive Chart alert for ETHUSD
+2025-09-20 16:05:25.916 [scheduling-1] INFO  c.t.s.DualStrategySchedulerService - ✅ Aggressive Chart position opened and notification sent for ETHUSD
+2025-09-20 16:05:25.918 [scheduling-1] INFO  c.t.s.DualStrategySchedulerService - 🚨 SIGNAL: SELL ETHUSD at $4662.06 - Resistance Level
+2025-09-20 16:05:25.919 [scheduling-1] INFO  c.t.s.DualStrategySchedulerService - 🎯 Processing Aggressive Chart signal for ETHUSD: SELL at $4662.06 - Resistance Level
+2025-09-20 16:05:25.920 [scheduling-1] DEBUG c.t.s.DualStrategySchedulerService - Opening Aggressive Chart position for ETHUSD
+2025-09-20 16:05:25.926 [scheduling-1] DEBUG org.hibernate.SQL - 
+    insert 
+    into
+        trades
+        (entry_price, entry_time, exit_price, exit_reason, exit_time, pnl, quantity, reason, status, stop_loss, symbol, take_profit, type) 
+    values
+        (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+2025-09-20 16:05:26.428 [scheduling-1] DEBUG c.t.s.DualStrategySchedulerService - ✅ Aggressive Chart position opened for ETHUSD
+2025-09-20 16:05:26.430 [scheduling-1] DEBUG c.t.s.DualStrategySchedulerService - Sending Aggressive Chart alert for ETHUSD
+2025-09-20 16:05:26.842 [scheduling-1] INFO  c.t.s.DualStrategySchedulerService - ✅ Aggressive Chart position opened and notification sent for ETHUSD
+2025-09-20 16:05:26.850 [scheduling-1] INFO  c.t.s.DualStrategySchedulerService - 🚨 SIGNAL: BUY ETHUSD at $4662.06 - Price Above SMA5
+2025-09-20 16:05:26.851 [scheduling-1] INFO  c.t.s.DualStrategySchedulerService - 🎯 Processing Aggressive Chart signal for ETHUSD: BUY at $4662.06 - Price Above SMA5
+2025-09-20 16:05:26.851 [scheduling-1] DEBUG c.t.s.DualStrategySchedulerService - Opening Aggressive Chart position for ETHUSD
+2025-09-20 16:05:26.856 [scheduling-1] DEBUG org.hibernate.SQL - 
+    insert 
+    into
+        trades
+        (entry_price, entry_time, exit_price, exit_reason, exit_time, pnl, quantity, reason, status, stop_loss, symbol, take_profit, type) 
+    values
+        (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+2025-09-20 16:05:27.263 [scheduling-1] DEBUG c.t.s.DualStrategySchedulerService - ✅ Aggressive Chart position opened for ETHUSD
+2025-09-20 16:05:27.264 [scheduling-1] DEBUG c.t.s.DualStrategySchedulerService - Sending Aggressive Chart alert for ETHUSD
+2025-09-20 16:05:27.678 [scheduling-1] INFO  c.t.s.DualStrategySchedulerService - ✅ Aggressive Chart position opened and notification sent for ETHUSD
+2025-09-20 16:05:27.679 [scheduling-1] DEBUG c.t.s.DualStrategySchedulerService - Processing Aggressive Chart Strategy for symbol: SOLUSD
+2025-09-20 16:05:27.680 [scheduling-1] DEBUG c.t.s.DualStrategySchedulerService - 🔍 Aggressive Chart Strategy checking SOLUSD...
+2025-09-20 16:05:27.687 [scheduling-1] DEBUG org.hibernate.SQL - 
+    select
+        t1_0.id,
+        t1_0.entry_price,
+        t1_0.entry_time,
+        t1_0.exit_price,
+        t1_0.exit_reason,
+        t1_0.exit_time,
+        t1_0.pnl,
+        t1_0.quantity,
+        t1_0.reason,
+        t1_0.status,
+        t1_0.stop_loss,
+        t1_0.symbol,
+        t1_0.take_profit,
+        t1_0.type 
+    from
+        trades t1_0 
+    where
+        t1_0.symbol=? 
+        and t1_0.status=?
+2025-09-20 16:05:27.699 [scheduling-1] DEBUG org.hibernate.SQL - 
+    select
+        t1_0.id,
+        t1_0.entry_price,
+        t1_0.entry_time,
+        t1_0.exit_price,
+        t1_0.exit_reason,
+        t1_0.exit_time,
+        t1_0.pnl,
+        t1_0.quantity,
+        t1_0.reason,
+        t1_0.status,
+        t1_0.stop_loss,
+        t1_0.symbol,
+        t1_0.take_profit,
+        t1_0.type 
+    from
+        trades t1_0 
+    where
+        t1_0.symbol=? 
+        and t1_0.status=?
+2025-09-20 16:05:27.706 [scheduling-1] DEBUG c.t.s.DualStrategySchedulerService - 📊 Fetching historical data for SOLUSD (Aggressive Chart needs 500 candles)
+2025-09-20 16:05:27.882 [scheduling-1] WARN  c.t.s.DualStrategySchedulerService - ❌ No historical data received for SOLUSD
+2025-09-20 16:05:27.883 [scheduling-1] INFO  c.t.s.DualStrategySchedulerService - ✅ Aggressive Chart Strategy cycle #1 completed
+2025-09-20 16:06:07.884 [pool-2-thread-1] DEBUG org.hibernate.SQL - 
+    select
+        t1_0.id,
+        t1_0.entry_price,
+        t1_0.entry_time,
+        t1_0.exit_price,
+        t1_0.exit_reason,
+        t1_0.exit_time,
+        t1_0.pnl,
+        t1_0.quantity,
+        t1_0.reason,
+        t1_0.status,
+        t1_0.stop_loss,
+        t1_0.symbol,
+        t1_0.take_profit,
+        t1_0.type 
+    from
+        trades t1_0 
+    where
+        t1_0.status=?
+2025-09-20 16:06:08.325 [pool-2-thread-1] DEBUG o.s.jdbc.datasource.DataSourceUtils - Setting JDBC Connection [HikariProxyConnection@793402138 wrapping com.mysql.cj.jdbc.ConnectionImpl@7bb4ed71] read-only
+2025-09-20 16:06:08.380 [pool-2-thread-1] DEBUG org.hibernate.SQL - 
+    select
+        t1_0.id,
+        t1_0.entry_price,
+        t1_0.entry_time,
+        t1_0.exit_price,
+        t1_0.exit_reason,
+        t1_0.exit_time,
+        t1_0.pnl,
+        t1_0.quantity,
+        t1_0.reason,
+        t1_0.status,
+        t1_0.stop_loss,
+        t1_0.symbol,
+        t1_0.take_profit,
+        t1_0.type 
+    from
+        trades t1_0 
+    where
+        t1_0.id=?
+2025-09-20 16:06:08.380 [pool-2-thread-1] DEBUG o.s.jdbc.datasource.DataSourceUtils - Resetting read-only flag of JDBC Connection [HikariProxyConnection@793402138 wrapping com.mysql.cj.jdbc.ConnectionImpl@7bb4ed71]
+2025-09-20 16:06:08.396 [pool-2-thread-1] DEBUG org.hibernate.SQL - 
+    select
+        t1_0.id,
+        t1_0.entry_price,
+        t1_0.entry_time,
+        t1_0.exit_price,
+        t1_0.exit_reason,
+        t1_0.exit_time,
+        t1_0.pnl,
+        t1_0.quantity,
+        t1_0.reason,
+        t1_0.status,
+        t1_0.stop_loss,
+        t1_0.symbol,
+        t1_0.take_profit,
+        t1_0.type 
+    from
+        trades t1_0 
+    where
+        t1_0.id=?
+2025-09-20 16:06:08.408 [pool-2-thread-1] DEBUG org.hibernate.SQL - 
+    update
+        trades 
+    set
+        entry_price=?,
+        entry_time=?,
+        exit_price=?,
+        exit_reason=?,
+        exit_time=?,
+        pnl=?,
+        quantity=?,
+        reason=?,
+        status=?,
+        stop_loss=?,
+        symbol=?,
+        take_profit=?,
+        type=? 
+    where
+        id=?
+2025-09-20 16:06:10.552 [pool-2-thread-1] DEBUG o.s.jdbc.datasource.DataSourceUtils - Setting JDBC Connection [HikariProxyConnection@2042908262 wrapping com.mysql.cj.jdbc.ConnectionImpl@7bb4ed71] read-only
+2025-09-20 16:06:10.552 [pool-2-thread-1] DEBUG org.hibernate.SQL - 
+    select
+        t1_0.id,
+        t1_0.entry_price,
+        t1_0.entry_time,
+        t1_0.exit_price,
+        t1_0.exit_reason,
+        t1_0.exit_time,
+        t1_0.pnl,
+        t1_0.quantity,
+        t1_0.reason,
+        t1_0.status,
+        t1_0.stop_loss,
+        t1_0.symbol,
+        t1_0.take_profit,
+        t1_0.type 
+    from
+        trades t1_0 
+    where
+        t1_0.id=?
+2025-09-20 16:06:10.557 [pool-2-thread-1] DEBUG o.s.jdbc.datasource.DataSourceUtils - Resetting read-only flag of JDBC Connection [HikariProxyConnection@2042908262 wrapping com.mysql.cj.jdbc.ConnectionImpl@7bb4ed71]
+2025-09-20 16:06:10.560 [pool-2-thread-1] DEBUG org.hibernate.SQL - 
+    select
+        t1_0.id,
+        t1_0.entry_price,
+        t1_0.entry_time,
+        t1_0.exit_price,
+        t1_0.exit_reason,
+        t1_0.exit_time,
+        t1_0.pnl,
+        t1_0.quantity,
+        t1_0.reason,
+        t1_0.status,
+        t1_0.stop_loss,
+        t1_0.symbol,
+        t1_0.take_profit,
+        t1_0.type 
+    from
+        trades t1_0 
+    where
+        t1_0.id=?
+2025-09-20 16:06:10.565 [pool-2-thread-1] DEBUG org.hibernate.SQL - 
+    update
+        trades 
+    set
+        entry_price=?,
+        entry_time=?,
+        exit_price=?,
+        exit_reason=?,
+        exit_time=?,
+        pnl=?,
+        quantity=?,
+        reason=?,
+        status=?,
+        stop_loss=?,
+        symbol=?,
+        take_profit=?,
+        type=? 
+    where
+        id=?
+2025-09-20 16:06:11.767 [pool-2-thread-1] DEBUG o.s.jdbc.datasource.DataSourceUtils - Setting JDBC Connection [HikariProxyConnection@1885285866 wrapping com.mysql.cj.jdbc.ConnectionImpl@7bb4ed71] read-only
+2025-09-20 16:06:11.771 [pool-2-thread-1] DEBUG org.hibernate.SQL - 
+    select
+        t1_0.id,
+        t1_0.entry_price,
+        t1_0.entry_time,
+        t1_0.exit_price,
+        t1_0.exit_reason,
+        t1_0.exit_time,
+        t1_0.pnl,
+        t1_0.quantity,
+        t1_0.reason,
+        t1_0.status,
+        t1_0.stop_loss,
+        t1_0.symbol,
+        t1_0.take_profit,
+        t1_0.type 
+    from
+        trades t1_0 
+    where
+        t1_0.id=?
+2025-09-20 16:06:11.777 [pool-2-thread-1] DEBUG o.s.jdbc.datasource.DataSourceUtils - Resetting read-only flag of JDBC Connection [HikariProxyConnection@1885285866 wrapping com.mysql.cj.jdbc.ConnectionImpl@7bb4ed71]
+2025-09-20 16:06:11.781 [pool-2-thread-1] DEBUG org.hibernate.SQL - 
+    select
+        t1_0.id,
+        t1_0.entry_price,
+        t1_0.entry_time,
+        t1_0.exit_price,
+        t1_0.exit_reason,
+        t1_0.exit_time,
+        t1_0.pnl,
+        t1_0.quantity,
+        t1_0.reason,
+        t1_0.status,
+        t1_0.stop_loss,
+        t1_0.symbol,
+        t1_0.take_profit,
+        t1_0.type 
+    from
+        trades t1_0 
+    where
+        t1_0.id=?
+2025-09-20 16:06:11.783 [pool-2-thread-1] DEBUG org.hibernate.SQL - 
+    update
+        trades 
+    set
+        entry_price=?,
+        entry_time=?,
+        exit_price=?,
+        exit_reason=?,
+        exit_time=?,
+        pnl=?,
+        quantity=?,
+        reason=?,
+        status=?,
+        stop_loss=?,
+        symbol=?,
+        take_profit=?,
+        type=? 
+    where
+        id=?
+2025-09-20 16:06:12.613 [SpringApplicationShutdownHook] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Shutdown initiated...
+2025-09-20 16:06:12.632 [SpringApplicationShutdownHook] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Shutdown completed.
