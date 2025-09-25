@@ -37,8 +37,6 @@ public class PositionManagementService {
                 currentPrice = priceService.getBitcoinPrice();
             } else if ("ETHUSD".equals(symbol)) {
                 currentPrice = priceService.getEthereumPrice();
-            } else if ("SOLUSD".equals(symbol) || "SOLUSDT".equals(symbol)) {
-                currentPrice = priceService.getSolanaPrice();
             }
             
             if (currentPrice != null && currentPrice > 0) {
@@ -47,8 +45,7 @@ public class PositionManagementService {
             }
             // Hard validation: prevent saving unrealistic entry prices
             boolean badBtcEth = ("BTCUSD".equals(symbol) || "ETHUSD".equals(symbol)) && entryPrice != null && entryPrice < 1000;
-            boolean badSol = ("SOLUSD".equals(symbol) || "SOLUSDT".equals(symbol)) && entryPrice != null && entryPrice < 5;
-            if (badBtcEth || badSol) {
+            if (badBtcEth) {
                 throw new IllegalStateException("Refusing to open trade with unrealistic entryPrice=" + entryPrice + " for " + symbol +
                         ". Current price fetched=" + currentPrice + ".");
             }
@@ -56,15 +53,19 @@ public class PositionManagementService {
             final double slPct = 0.005;  // 0.50%
             final double tpPct = 0.01;   // 1.00%
             if ("BUY".equals(type)) {
-                stopLoss = stopLoss != null && stopLoss < entryPrice ? roundToTick(symbol, stopLoss)
-                        : roundToTick(symbol, entryPrice * (1 - slPct));
-                takeProfit = takeProfit != null && takeProfit > entryPrice ? roundToTick(symbol, takeProfit)
-                        : roundToTick(symbol, entryPrice * (1 + tpPct));
+                if (entryPrice != null) {
+                    stopLoss = (stopLoss != null && stopLoss < entryPrice) ? roundToTick(symbol, stopLoss)
+                            : roundToTick(symbol, entryPrice * (1 - slPct));
+                    takeProfit = (takeProfit != null && takeProfit > entryPrice) ? roundToTick(symbol, takeProfit)
+                            : roundToTick(symbol, entryPrice * (1 + tpPct));
+                }
             } else { // SELL
-                stopLoss = stopLoss != null && stopLoss > entryPrice ? roundToTick(symbol, stopLoss)
-                        : roundToTick(symbol, entryPrice * (1 + slPct));
-                takeProfit = takeProfit != null && takeProfit < entryPrice ? roundToTick(symbol, takeProfit)
-                        : roundToTick(symbol, entryPrice * (1 - tpPct));
+                if (entryPrice != null) {
+                    stopLoss = (stopLoss != null && stopLoss > entryPrice) ? roundToTick(symbol, stopLoss)
+                            : roundToTick(symbol, entryPrice * (1 + slPct));
+                    takeProfit = (takeProfit != null && takeProfit < entryPrice) ? roundToTick(symbol, takeProfit)
+                            : roundToTick(symbol, entryPrice * (1 - tpPct));
+                }
             }
         } catch (Exception ignore) {}
 
@@ -77,10 +78,12 @@ public class PositionManagementService {
         System.out.println("✅ New position opened: " + savedTrade);
         
         // Send Telegram notification for new position
-        if (type.equals("BUY")) {
-            telegramService.sendBuySignal(symbol, entryPrice, stopLoss, takeProfit, reason);
-        } else {
-            telegramService.sendSellSignal(symbol, entryPrice, stopLoss, takeProfit, reason);
+        if (entryPrice != null && stopLoss != null && takeProfit != null) {
+            if (type.equals("BUY")) {
+                telegramService.sendBuySignal(symbol, entryPrice, stopLoss, takeProfit, reason);
+            } else {
+                telegramService.sendSellSignal(symbol, entryPrice, stopLoss, takeProfit, reason);
+            }
         }
         
         return savedTrade;
@@ -201,10 +204,13 @@ public class PositionManagementService {
         // Simple position sizing: 1% risk per trade
         // This is a placeholder - in real trading, this would be more sophisticated
         double riskAmount = 1000.0; // $1000 risk per trade
-        double riskPerUnit = Math.abs(entryPrice - stopLoss);
         
-        if (riskPerUnit > 0) {
-            return riskAmount / riskPerUnit;
+        if (entryPrice != null && stopLoss != null) {
+            double riskPerUnit = Math.abs(entryPrice - stopLoss);
+            
+            if (riskPerUnit > 0) {
+                return riskAmount / riskPerUnit;
+            }
         }
         
         return 1.0; // Default quantity
@@ -214,7 +220,6 @@ public class PositionManagementService {
         double tick;
         if ("BTCUSD".equals(symbol)) tick = 0.5;
         else if ("ETHUSD".equals(symbol)) tick = 0.05;
-        else if ("SOLUSD".equals(symbol) || "SOLUSDT".equals(symbol)) tick = 0.001;
         else tick = 0.01;
         return Math.round(price / tick) * tick;
     }

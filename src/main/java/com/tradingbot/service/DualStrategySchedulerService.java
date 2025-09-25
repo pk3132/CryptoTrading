@@ -46,8 +46,8 @@ public class DualStrategySchedulerService {
     private int strategyCycles = 0;
     
     // Symbols to monitor
-    private static final String[] SYMBOLS_TO_MONITOR = {"BTCUSD", "ETHUSD", "SOLUSD"};
-    private static final String TIMEFRAME = "15m";
+    private static final String[] SYMBOLS_TO_MONITOR = {"BTCUSD", "ETHUSD"};
+    private static final String TIMEFRAME = "1m";
     private static final int CANDLES_TO_FETCH = 500;
 
     /**
@@ -98,10 +98,10 @@ public class DualStrategySchedulerService {
                 return;
             }
             
-            // Get historical data for EMA 200 + Trendline Strategy (15m candles)
+            // Get historical data for EMA 200 + Trendline Strategy (1m candles)
             logger.debug("📊 Fetching historical data for {} (EMA 200 + Trendline needs {} candles)", symbol, CANDLES_TO_FETCH);
             long now = System.currentTimeMillis() / 1000;
-            long start = now - (CANDLES_TO_FETCH * 15 * 60); // 15 minutes per candle
+            long start = now - (CANDLES_TO_FETCH * 1 * 60); // 1 minute per candle
             
             List<Map<String, Object>> candles = deltaApiClient.fetchOhlcv(symbol, TIMEFRAME, start, now);
             if (candles == null || candles.isEmpty()) {

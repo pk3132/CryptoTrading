@@ -3,6 +3,8 @@ package com.tradingbot.strategy;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.math3.stat.regression.SimpleRegression;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -19,6 +21,7 @@ import java.util.List;
 
 @Service
 public class EMA200TrendlineStrategy {
+    private static final Logger logger = LoggerFactory.getLogger(EMA200TrendlineStrategy.class);
     
     // Configuration
     private static final String BASE_URL = "https://api.india.delta.exchange";
@@ -150,62 +153,81 @@ public class EMA200TrendlineStrategy {
                 currentPrice = marketPrice;
             }
         } catch (Exception ignored) {}
+        
+        // IMPORTANT: Use current mark price, not last candle close, for accurate EMA200 comparison
         if (currentPrice <= 0) {
-            currentPrice = candles.get(candles.size() - 1).close; // Fallback to last candle close
+            // If we can't get current mark price, skip this signal generation
+            logger.warn("⚠️ Cannot get current market price for {}, skipping signal generation", symbol);
+            return signals;
         }
 
         Candle lastCandle = candles.get(candles.size() - 1);
         double emaValue = lastCandle.ema200; // Use EMA from last full candle
 
-        // Get recent swing points (last 3) relative to the end of the historical data
-        List<SwingPoint> recentHighs = highs.stream()
-                .filter(h -> h.index >= candles.size() - LOOKBACK_PERIOD && h.index < candles.size())
-                .collect(ArrayList::new, (list, item) -> {
-                    list.add(item);
-                    if (list.size() > 3) list.remove(0);
-                }, ArrayList::addAll);
+        // Build trendlines with last 2 swing highs/lows (as per sample code)
+        List<SwingPoint> recentHighs = new ArrayList<>();
+        List<SwingPoint> recentLows = new ArrayList<>();
         
-        List<SwingPoint> recentLows = lows.stream()
-                .filter(l -> l.index >= candles.size() - LOOKBACK_PERIOD && l.index < candles.size())
-                .collect(ArrayList::new, (list, item) -> {
-                    list.add(item);
-                    if (list.size() > 3) list.remove(0);
-                }, ArrayList::addAll);
+        // Get last 2 swing highs for resistance trendline
+        if (highs.size() >= 2) {
+            recentHighs.add(highs.get(highs.size() - 2)); // high1
+            recentHighs.add(highs.get(highs.size() - 1)); // high2
+        }
+        
+        // Get last 2 swing lows for support trendline
+        if (lows.size() >= 2) {
+            recentLows.add(lows.get(lows.size() - 2)); // low1
+            recentLows.add(lows.get(lows.size() - 1)); // low2
+        }
 
         // Fit trendlines
         TrendLine resistanceLine = fitTrendline(recentHighs);
         TrendLine supportLine = fitTrendline(recentLows);
 
         // Calculate trendline values at current position (index of the last candle)
-        int currentIndex = candles.size() - 1;
+        int x_now = candles.size() - 1;
 
+        // Compute trendline values using formula
+        double supportValue = 0;
+        double resistanceValue = 0;
+        
+        if (supportLine != null) {
+            supportValue = supportLine.getValue(x_now);
+        }
+        
         if (resistanceLine != null) {
-            double resistanceValue = resistanceLine.getValue(currentIndex);
-            
-            // LONG signal: Price > EMA200 and breaks above descending resistance line
-            if (currentPrice > emaValue && resistanceLine.slope < 0 && currentPrice > resistanceValue) {
+            resistanceValue = resistanceLine.getValue(x_now);
+        }
+
+        // Trading Logic: TWO-STEP PROCESS
+        // STEP 1: Check EMA200 Filter FIRST
+        // STEP 2: Only if EMA200 condition is met, THEN check trendline breakout
+        
+        // BUY Logic: BTC > EMA200 FIRST, then check Resistance Breakout
+        if (currentPrice > emaValue) {
+            // STEP 1 PASSED: BTC > EMA200 ✅
+            // STEP 2: Now check Resistance Trendline Breakout
+            if (resistanceLine != null && currentPrice > resistanceValue) {
+                // BOTH CONDITIONS MET: BTC > EMA200 + Resistance Breakout = BUY
                 double stopLoss = currentPrice * (1 - STOP_LOSS_PCT);
                 double takeProfit = currentPrice * (1 + TAKE_PROFIT_PCT);
-                // Emit only if on correct EMA side (redundant safety)
-                if (currentPrice >= emaValue) {
-                    signals.add(new TradeSignal("BUY", currentPrice, stopLoss, takeProfit,
-                        String.format("Bullish Pattern (Above EMA 200, Trendline Breakout, Trend: %.2f%%)", (currentPrice - emaValue) / emaValue * 100)));
-                }
+                signals.add(new TradeSignal("BUY", currentPrice, stopLoss, takeProfit,
+                    String.format("BUY Signal: BTC > EMA200 (%.2f > %.2f) + Resistance Breakout (%.2f > %.2f)", 
+                        currentPrice, emaValue, currentPrice, resistanceValue)));
             }
         }
         
-        if (supportLine != null) {
-            double supportValue = supportLine.getValue(currentIndex);
-            
-            // SHORT signal: Price < EMA200 and breaks below ascending support line
-            if (currentPrice < emaValue && supportLine.slope > 0 && currentPrice < supportValue) {
+        // SELL Logic: BTC < EMA200 FIRST, then check Support Breakout
+        if (currentPrice < emaValue) {
+            // STEP 1 PASSED: BTC < EMA200 ✅
+            // STEP 2: Now check Support Trendline Breakout
+            if (supportLine != null && currentPrice < supportValue) {
+                // BOTH CONDITIONS MET: BTC < EMA200 + Support Breakout = SELL
                 double stopLoss = currentPrice * (1 + STOP_LOSS_PCT);
                 double takeProfit = currentPrice * (1 - TAKE_PROFIT_PCT);
-                // Emit only if on correct EMA side (redundant safety)
-                if (currentPrice <= emaValue) {
-                    signals.add(new TradeSignal("SELL", currentPrice, stopLoss, takeProfit,
-                        String.format("Bearish Pattern (Below EMA 200, Trendline Breakout, Trend: %.2f%%)", (emaValue - currentPrice) / emaValue * 100)));
-                }
+                signals.add(new TradeSignal("SELL", currentPrice, stopLoss, takeProfit,
+                    String.format("SELL Signal: BTC < EMA200 (%.2f < %.2f) + Support Breakout (%.2f < %.2f)", 
+                        currentPrice, emaValue, currentPrice, supportValue)));
             }
         }
         return signals;
@@ -267,31 +289,18 @@ public class EMA200TrendlineStrategy {
         List<SwingPoint> highs = new ArrayList<>();
         List<SwingPoint> lows = new ArrayList<>();
         
-        for (int i = MIN_SWING_SEPARATION; i < candles.size() - MIN_SWING_SEPARATION; i++) {
-            // Check for swing high
-            boolean isHigh = true;
-            for (int j = 1; j <= MIN_SWING_SEPARATION; j++) {
-                if (candles.get(i).high <= candles.get(i - j).high || 
-                    candles.get(i).high <= candles.get(i + j).high) {
-                    isHigh = false;
-                    break;
-                }
-            }
-            if (isHigh) {
+        // Improved swing point detection based on sample code
+        for (int i = 1; i < candles.size() - 1; i++) {
+            // Swing High: high > previous high AND high > next high
+            if (candles.get(i).high > candles.get(i-1).high &&
+                candles.get(i).high > candles.get(i+1).high) {
                 highs.add(new SwingPoint(i, candles.get(i).high));
                 candles.get(i).swingHigh = candles.get(i).high;
             }
             
-            // Check for swing low
-            boolean isLow = true;
-            for (int j = 1; j <= MIN_SWING_SEPARATION; j++) {
-                if (candles.get(i).low >= candles.get(i - j).low || 
-                    candles.get(i).low >= candles.get(i + j).low) {
-                    isLow = false;
-                    break;
-                }
-            }
-            if (isLow) {
+            // Swing Low: low < previous low AND low < next low
+            if (candles.get(i).low < candles.get(i-1).low &&
+                candles.get(i).low < candles.get(i+1).low) {
                 lows.add(new SwingPoint(i, candles.get(i).low));
                 candles.get(i).swingLow = candles.get(i).low;
             }

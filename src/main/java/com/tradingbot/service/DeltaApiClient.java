@@ -105,10 +105,27 @@ public class DeltaApiClient {
                 Object resultObj = response.getBody().get("result");
                 if (resultObj instanceof java.util.List) {
                     java.util.List list = (java.util.List) resultObj;
+                    
+                    // Find the correct symbol in the list instead of just taking the first one
+                    for (Object item : list) {
+                        if (item instanceof java.util.Map) {
+                            java.util.Map itemMap = (java.util.Map) item;
+                            String itemSymbol = (String) itemMap.get("symbol");
+                            if (symbol.equals(itemSymbol)) {
+                                Object markObj = itemMap.get("mark_price");
+                                if (markObj != null) {
+                                    return Double.parseDouble(markObj.toString());
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Fallback: if symbol not found, use first item (old behavior)
                     if (!list.isEmpty() && list.get(0) instanceof java.util.Map) {
                         java.util.Map first = (java.util.Map) list.get(0);
                         Object markObj = first.get("mark_price");
                         if (markObj != null) {
+                            System.err.println("⚠️ Symbol " + symbol + " not found, using first available symbol: " + first.get("symbol"));
                             return Double.parseDouble(markObj.toString());
                         }
                     }

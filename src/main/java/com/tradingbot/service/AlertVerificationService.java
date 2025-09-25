@@ -49,7 +49,7 @@ public class AlertVerificationService {
                 ⚡ *Strategy Details:*
                 • Timeframe: 15 minutes
                 • Risk-Reward: 1:2
-                • Symbols: BTCUSD, ETHUSD, SOLUSD
+                • Symbols: BTCUSD, ETHUSD
                 • Professional Grade Aggressive Chart Analysis
                 
                 ⏰ *Verification Time:* %s

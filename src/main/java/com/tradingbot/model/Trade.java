@@ -2,6 +2,7 @@ package com.tradingbot.model;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 
 /**
  * Trade Entity - Represents an active trading position
@@ -66,7 +67,7 @@ public class Trade {
         this.quantity = quantity;
         this.reason = reason;
         this.status = "OPEN";
-        this.entryTime = LocalDateTime.now();
+        this.entryTime = LocalDateTime.now(ZoneId.of("Asia/Kolkata"));
     }
 
     // Getters and Setters
@@ -223,7 +224,7 @@ public class Trade {
         this.exitReason = exitReason;
         this.pnl = calculatePnL(exitPrice);
         this.status = "CLOSED";
-        this.exitTime = LocalDateTime.now();
+        this.exitTime = LocalDateTime.now(ZoneId.of("Asia/Kolkata"));
     }
 
     @Override

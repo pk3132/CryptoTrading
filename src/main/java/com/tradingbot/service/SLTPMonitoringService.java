@@ -26,7 +26,7 @@ public class SLTPMonitoringService {
     private PositionManagementService positionService;
 
     @Autowired
-    private CryptoPriceService priceService;
+    private DeltaApiClient deltaApiClient;
 
     @Autowired
     private TelegramNotificationService telegramService;
@@ -186,17 +186,12 @@ public class SLTPMonitoringService {
     }
 
     /**
-     * Get current price for a symbol
+     * Get current price for a symbol using DeltaApiClient (fixed price fetching)
      */
     private Double getCurrentPrice(String symbol) {
         try {
-            if (symbol.equals("BTCUSD")) {
-                return priceService.getBitcoinPrice();
-            } else if (symbol.equals("ETHUSD")) {
-                return priceService.getEthereumPrice();
-            } else if (symbol.equals("SOLUSD") || symbol.equals("SOLUSDT")) {
-                return priceService.getSolanaPrice();
-            }
+            // Use DeltaApiClient which has the fixed price fetching logic
+            return deltaApiClient.getCurrentMarkPrice(symbol);
         } catch (Exception e) {
             System.err.println("❌ Error fetching price for " + symbol + ": " + e.getMessage());
         }

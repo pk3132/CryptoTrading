@@ -86,7 +86,7 @@ public class TradingbotApplication implements CommandLineRunner {
 				• Trend Analysis (SMA5)
 				• Risk-Reward: 1:2
 				
-				📊 *Monitoring:* BTCUSD, ETHUSD, SOLUSD
+				📊 *Monitoring:* BTCUSD, ETHUSD
 				
 				📱 *You'll receive notifications for:*
 				• BUY signals (Price uptrend, Support bounces, Bullish patterns)
