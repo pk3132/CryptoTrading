@@ -2,6 +2,7 @@ package com.tradingbot.service;
 
 import com.tradingbot.model.Trade;
 import com.tradingbot.repository.TradeRepository;
+import com.tradingbot.strategy.EMA200TrendlineStrategy; // 🆕 Import for state reset
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -33,6 +34,10 @@ public class SLTPMonitoringService {
     
     @Autowired
     private com.tradingbot.service.AlertVerificationService alertVerificationService;
+    
+    // 🆕 To reset position state in strategy  
+    @Autowired
+    private EMA200TrendlineStrategy ema200Strategy;
 
     private final ScheduledExecutorService scheduler;
     private boolean isMonitoring = false;
@@ -51,15 +56,15 @@ public class SLTPMonitoringService {
             return;
         }
 
-        System.out.println("🛡️ Starting SL/TP Monitoring (every 50 seconds)");
+        System.out.println("🛡️ Starting SL/TP Monitoring (every 10 seconds)");
         
         // No redundant startup message - main bot already sends comprehensive startup message
 
         isMonitoring = true;
         monitoringCycle = 0;
 
-        // Start monitoring every 50 seconds for faster SL/TP detection
-        scheduler.scheduleAtFixedRate(this::monitorPositions, 0, 50, TimeUnit.SECONDS);
+        // Start monitoring every 10 seconds for faster SL/TP detection
+        scheduler.scheduleAtFixedRate(this::monitorPositions, 0, 10, TimeUnit.SECONDS);
     }
 
     /**
@@ -84,7 +89,7 @@ public class SLTPMonitoringService {
             • Status: Stopped by user
             
             🎯 *Position monitoring stopped*
-            """.formatted(monitoringCycle, monitoringCycle * 2);
+            """.formatted(monitoringCycle, monitoringCycle / 6);
 
         telegramService.sendTelegramMessage(stopMessage);
     }
@@ -119,7 +124,7 @@ public class SLTPMonitoringService {
                 monitorTrade(trade, timestamp);
             }
 
-            // Send periodic status update every 30 cycles (1 hour)
+            // Send periodic status update every 30 cycles (~5 minutes)
             if (monitoringCycle % 30 == 0) {
                 sendMonitoringStatusUpdate(openTrades);
             }
@@ -160,6 +165,9 @@ public class SLTPMonitoringService {
                 String exitReason = "Stop Loss Hit - Price: $" + String.format("%.2f", currentPrice);
                 positionService.closePosition(trade.getId(), currentPrice, exitReason);
                 
+                // 🆕 State RESET for position tracking
+                resetPositionState(trade.getSymbol());
+                
                 // Send immediate alert
                 sendStopLossAlert(trade, currentPrice, timestamp);
                 return;
@@ -171,6 +179,9 @@ public class SLTPMonitoringService {
                 
                 String exitReason = "Take Profit Hit - Price: $" + String.format("%.2f", currentPrice);
                 positionService.closePosition(trade.getId(), currentPrice, exitReason);
+                
+                // 🆕 State RESET for position tracking
+                resetPositionState(trade.getSymbol());
                 
                 // Send immediate alert
                 sendTakeProfitAlert(trade, currentPrice, timestamp);
@@ -320,7 +331,7 @@ public class SLTPMonitoringService {
                 """.formatted(
                     LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")),
                     monitoringCycle,
-                    monitoringCycle * 2,
+                    monitoringCycle / 6,
                     openTrades.size()
                 );
 
@@ -343,6 +354,17 @@ public class SLTPMonitoringService {
      */
     public String getMonitoringStats() {
         return String.format("SL/TP Monitoring Cycle: %d, Duration: %d minutes", 
-                           monitoringCycle, monitoringCycle * 2);
+                           monitoringCycle, monitoringCycle / 6);
+    }
+    
+    /**
+     * 🆕 Reset position state in strategy when trade closes
+     */
+    private void resetPositionState(String symbol) {
+        if (ema200Strategy != null) {
+            ema200Strategy.closeTrade(symbol, "TP/SL Hit");
+        } else {
+            System.out.println("⚠️ Cannot reset strategy state - EMA strategy not found");
+        }
     }
 }
