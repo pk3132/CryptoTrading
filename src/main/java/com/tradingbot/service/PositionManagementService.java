@@ -5,8 +5,12 @@ import com.tradingbot.repository.TradeRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.Map;
 
 /**
  * Position Management Service
@@ -23,12 +27,103 @@ public class PositionManagementService {
 
     @Autowired
     private CryptoPriceService priceService;
+    
+    // Enhanced trendline formation tracking
+    public static class TrendlineState {
+        public final boolean hasNewTrendline;
+        public final boolean trendlineBroken;
+        public final LocalDateTime lastProfitableTradeTime;
+        public final String lastTrendlineType;
+        public final double lastTrendlineValue;
+        public final LocalDateTime lastTrendlineFormationTime;
+        public final double previousTrendlineValue; // Track if trendline changed significantly
+        
+        public TrendlineState(boolean hasNewTrendline, boolean trendlineBroken, 
+                           LocalDateTime lastProfitableTradeTime, String lastTrendlineType, 
+                           double lastTrendlineValue, LocalDateTime lastTrendlineFormationTime, 
+                           double previousTrendlineValue) {
+            this.hasNewTrendline = hasNewTrendline;
+            this.trendlineBroken = trendlineBroken;
+            this.lastProfitableTradeTime = lastProfitableTradeTime;
+            this.lastTrendlineType = lastTrendlineType;
+            this.lastTrendlineValue = lastTrendlineValue;
+            this.lastTrendlineFormationTime = lastTrendlineFormationTime;
+            this.previousTrendlineValue = previousTrendlineValue;
+        }
+    }
+    
+    // Track trendline formation state per symbol 
+    private final Map<String, TrendlineState> symbolTrendlineState = new ConcurrentHashMap<>();
+    
+    // Track when profitable trades closed to reset trendline monitoring
+    private final Map<String, LocalDateTime> lastProfitableTradeTimes = new ConcurrentHashMap<>();
+
+    /**
+     * Enhanced logic: Must wait for FRESH trendline (different from last one used) + breakout
+     */
+    public boolean isInCooldown(String symbol) {
+        TrendlineState state = symbolTrendlineState.get(symbol);
+        if (state == null) {
+            return false; // No recent profitable trade
+        }
+        
+        // First check: New trendline must be formed
+        if (!state.hasNewTrendline) {
+            System.out.println("⏰ " + symbol + " - Waiting for NEW trendline formation after profitable trade");
+            return true;
+        }
+        
+        // Second check: Ensure new trendline is actually NEW and different
+        if (state.lastTrendlineValue == state.previousTrendlineValue && state.previousTrendlineValue != 0) {
+            System.out.println("♻️ " + symbol + " - Need FRESH trendline (current is identical to last one)");
+            return true;
+        }
+        
+        // Third check: Must have breakout confirmation  
+        if (!state.trendlineBroken) {
+            System.out.println("🚧 " + symbol + " - New trendline formed, waiting for breakout confirmation");
+            return true;
+        }
+        
+        return false; // All conditions met - genuinely new trendline + breakout = ready
+    }
+    
+    /**
+     * Enhanced status message for timing trendline development  
+     */
+    public String getTrendlineStatusMessage(String symbol) {
+        TrendlineState state = symbolTrendlineState.get(symbol);
+        if (state == null) {
+            return symbol + " - No recent profitable trades"; 
+        }
+        
+        if (!state.hasNewTrendline) {
+            return symbol + " - ⏰ Waiting for NEW trendline formation after profitable trade";
+        }
+        
+        if (state.lastTrendlineValue == state.previousTrendlineValue && state.previousTrendlineValue != 0) {
+            return symbol + " - ♻️ Need FRESH trendline (current identical to last - market evolving)";
+        }
+        
+        if (!state.trendlineBroken) {
+            return symbol + " - 🚧 NEW trendline detected, waiting for breakout confirmation";
+        }
+        
+        return symbol + " - ✅ Ready: FRESH trendline formed and broken for trading";
+    }
 
     /**
      * Open a new trade position
      */
     public Trade openPosition(String symbol, String type, Double entryPrice, 
                              Double stopLoss, Double takeProfit, String reason) {
+        // Enhanced check: Must have both new trendline AND breakout 
+        if (isInCooldown(symbol)) {
+            String statusMsg = getTrendlineStatusMessage(symbol);
+            System.out.println("🛡️ " + statusMsg);
+            return null; // Skip opening - waiting for trendline fulfillment
+        }
+        
         // Sanity check: correct obviously wrong entry prices by using current price
         try {
             // Use CryptoPriceService for more reliable price fetching
@@ -102,6 +197,9 @@ public class PositionManagementService {
             
             System.out.println("✅ Position closed: " + savedTrade);
             
+            // Track profitable trades to enforce cooldown period
+            checkAndSetCooldown(trade);
+            
             // Send Telegram notification for trade closure
             String signalType = trade.getType().toString();
             Double pnl = trade.getPnl();
@@ -118,6 +216,70 @@ public class PositionManagementService {
         }
         
         throw new RuntimeException("Trade not found with ID: " + tradeId);
+    }
+    
+    /**
+     * Enhanced logic: Start monitoring for NEW trendline after profitable trade
+     */
+    private void checkAndSetCooldown(Trade trade) {
+        if (trade.getPnl() != null && trade.getPnl() > 0) {
+            String symbol = trade.getSymbol();
+            LocalDateTime closeTime = trade.getExitTime();
+            if (closeTime != null) {
+                // Reset state after profitable trade - monitor for completely FRESH trendline
+                symbolTrendlineState.put(symbol, new TrendlineState(
+                    false,           // hasNewTrendline - force completely new formation   
+                    false,           // trendlineBroken - need fresh breakout
+                    closeTime,       // when profitable trade closed
+                    null,            // lastTrendlineType - reset  
+                    0.0,             // lastTrendlineValue - reset (will be different)
+                    null,            // lastTrendlineFormationTime - reset timing
+                    0.0              // previousTrendlineValue - clear old reference
+                ));
+                
+                lastProfitableTradeTimes.put(symbol, closeTime);
+                System.out.println("🛡️ Profitable trade closed for " + symbol + " - Starting NEW trendline formation monitoring");
+            }
+        }
+    }
+    
+    /**
+     * Enhanced update with fresh trendline validation
+     */
+    public void updateTrendlineFormation(String symbol, String trendlineType, double trendlineValue, boolean isBreaking) {
+        if (symbolTrendlineState.containsKey(symbol)) {
+            TrendlineState currentState = symbolTrendlineState.get(symbol);
+            
+            // Check if this is truly a NEW/FRESH trendline different from previous
+            boolean isFreshTrendline = false;
+            if (currentState.previousTrendlineValue == 0 || 
+                Math.abs(trendlineValue - currentState.lastTrendlineValue) > trendlineValue * 0.02) { // 2% difference threshold for "new"
+                isFreshTrendline = true;
+                System.out.println("🔍 Detected fresh " + trendlineType + " trendline vs previous: " + 
+                                 currentState.lastTrendlineValue + " → " + trendlineValue);
+            }
+            
+            LocalDateTime formationTime = LocalDateTime.now(); // Record when trendline detected 
+            if (isFreshTrendline) {
+                System.out.println("📊 NEW " + trendlineType + " trendline detected for " + symbol + 
+                                 " at " + trendlineValue);
+            }
+            
+            // Only update if we're monitoring AND (it's fresh OR we detect structural change)
+            symbolTrendlineState.put(symbol, new TrendlineState(
+                true,                                 // hasNewTrendline - accept if different enough 
+                isBreaking,                           // trendlineBroken
+                currentState.lastProfitableTradeTime,
+                trendlineType,
+                trendlineValue,
+                formationTime,                        // Record timing of new formation
+                currentState.lastTrendlineValue       // Save the previous for comparison
+            ));
+            
+            String message = isBreaking ? "BREAKOUT CONFIRMED" : 
+                            (isFreshTrendline ? "Fresh trendline - waiting for breakout" : "Formed");
+            System.out.println("📈 " + symbol + " " + trendlineType + " status: " + message);
+        }
     }
 
     /**

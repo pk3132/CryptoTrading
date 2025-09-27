@@ -2,6 +2,7 @@ package com.tradingbot.service;
 
 import com.tradingbot.strategy.EMA200TrendlineStrategy;
 import com.tradingbot.service.DeltaApiClient;
+import com.tradingbot.model.Trade;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -98,6 +99,13 @@ public class DualStrategySchedulerService {
                 return;
             }
             
+            // Check if we need to wait for new trendline formation after profitable trade
+            if (positionService.isInCooldown(symbol)) {
+                String statusMsg = positionService.getTrendlineStatusMessage(symbol);
+                logger.info("🛡️ {} : {}", symbol, statusMsg);
+                return;
+            }
+            
             // Get historical data for EMA 200 + Trendline Strategy (1m candles)
             logger.debug("📊 Fetching historical data for {} (EMA 200 + Trendline needs {} candles)", symbol, CANDLES_TO_FETCH);
             long now = System.currentTimeMillis() / 1000;
@@ -126,6 +134,9 @@ public class DualStrategySchedulerService {
             // Check for signals
             logger.debug("🔍 Checking for EMA 200 + Trendline signals for {}", symbol);
             List<EMA200TrendlineStrategy.TradeSignal> signals = ema200TrendlineStrategy.checkSignals(symbol);
+            
+            // Check if we need to monitor trendlines for breakout tracking
+            checkTrendlineFormationStatus(symbol);
             
             if (!signals.isEmpty()) {
                 logger.info("🚨 EMA 200 + TRENDLINE SIGNAL DETECTED: {} signals for {}", signals.size(), symbol);
@@ -164,7 +175,7 @@ public class DualStrategySchedulerService {
             
             // Open position
             logger.debug("Opening EMA 200 + Trendline position for {}", symbol);
-            positionService.openPosition(
+            var newTrade = positionService.openPosition(
                 symbol,
                 signal.getType(),
                 signal.getEntryPrice(),
@@ -172,6 +183,11 @@ public class DualStrategySchedulerService {
                 signal.getTakeProfit(),
                 signal.getReason()
             );
+            
+            if (newTrade == null) {
+                logger.info("🛡️ Position opening blocked due to cooldown - waiting for better trendline setup");
+                return;
+            }
             logger.debug("✅ EMA 200 + Trendline position opened for {}", symbol);
             
             // Send notification
@@ -199,6 +215,47 @@ public class DualStrategySchedulerService {
     public void setStrategyEnabled(boolean enabled) {
         this.strategyEnabled = enabled;
         logger.info("🎯 Dynamic Chart Strategy {}", enabled ? "ENABLED" : "DISABLED");
+    }
+
+    /**
+     * Check trendline formation state and update position management 
+     */
+    private void checkTrendlineFormationStatus(String symbol) {
+        try {
+            // Get recent signals that show trendline formation/breakout
+            List<EMA200TrendlineStrategy.TradeSignal> recentSignals = ema200TrendlineStrategy.checkSignals(symbol);
+            
+            for (EMA200TrendlineStrategy.TradeSignal signal : recentSignals) {
+                String trendlineType = "BUY".equals(signal.getType()) ? "Resistance" : "Support";
+                
+                // Check if current price is near breakout level - indicates trendline formation  
+                Double currentPrice = deltaApiClient.getCurrentMarkPrice(symbol);
+                Double entryPrice = signal.getEntryPrice();
+                
+                if (currentPrice != null && entryPrice != null) {
+                    double priceDiff = Math.abs(currentPrice - entryPrice) / entryPrice;
+                    
+                    // If very close to trendline (within 0.5%), consider it formed and check if fresh vs last
+                    if (priceDiff <= 0.005) {
+                        boolean isBreaking = "BUY".equals(signal.getType()) 
+                            ? currentPrice > entryPrice 
+                            : currentPrice < entryPrice;
+                        
+                        // Detect if this is a meaningful change (not just same level)
+                        boolean isBreakingFreshly = isBreaking && priceDiff <= 0.001; // Close tolerance for break
+                        
+                        logger.info("📊 {}: {} trendline detected at {} - {}",
+                                   symbol, trendlineType, entryPrice, 
+                                   isBreakingFreshly ? "🎯 FRESH BREAKOUT" : "📈 TRENDLINE");
+                        
+                        positionService.updateTrendlineFormation(symbol, trendlineType, 
+                                                               entryPrice, isBreakingFreshly);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            logger.debug("⚠️ Error checking trendline status for {}: {}", symbol, e.getMessage());
+        }
     }
 
     /**
