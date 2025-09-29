@@ -18,7 +18,7 @@ import java.util.Map;
 /**
  * EMA 200 + Trendline Breakout Strategy Scheduler Service
  * 
- * Runs EMA 200 + Trendline Breakout Strategy: Every 15 minutes
+ * Runs EMA 200 + Trendline Breakout Strategy: Every 5 minutes
  * BUY: Price > EMA200 + breaks above descending resistance line
  * SELL: Price < EMA200 + breaks below ascending support line
  */
@@ -49,13 +49,18 @@ public class DualStrategySchedulerService {
     // Symbols to monitor
     private static final String[] SYMBOLS_TO_MONITOR = {"BTCUSD", "ETHUSD"};
     private static final String TIMEFRAME = "1m";
-    private static final int CANDLES_TO_FETCH = 500;
+    // EMA 200 calculation candles (500 candles for both)
+    private static final int BTC_EMA_CANDLES = 500;
+    private static final int ETH_EMA_CANDLES = 500;
+    
+    // Trendline calculation candles (500 candles for better analysis)
+    private static final int TRENDLINE_CANDLES = 500;
 
     /**
      * EMA 200 + Trendline Breakout Strategy
-     * Runs every 15 minutes - BUY/SELL based on EMA200 and trendline breakouts
+     * Runs every 5 minutes - BUY/SELL based on EMA200 and trendline breakouts
      */
-    @Scheduled(fixedRate = 900000) // 15 minutes = 900,000 milliseconds
+    @Scheduled(fixedRate = 300000) // 5 minutes = 300,000 milliseconds
     public void runEMA200TrendlineStrategy() {
         if (!strategyEnabled) {
             logger.debug("EMA 200 + Trendline Strategy is disabled - skipping execution");
@@ -68,7 +73,7 @@ public class DualStrategySchedulerService {
         logger.info("🎯 EMA 200 + TRENDLINE STRATEGY EXECUTION #{} - {}", strategyCycles, timestamp);
         logger.info("📊 Strategy: EMA 200 + Trendline Breakout");
         logger.info("📈 Timeframe: 15 minutes");
-        logger.info("⚡ Risk-Reward: 1:2 (2% SL, 4% TP)");
+        logger.info("⚡ Risk-Reward: 1:2 (0.5% SL, 1.0% TP)");
         logger.info("🔍 Features: EMA 200 Filter, Swing Points, Trendline Breakouts");
         logger.debug("Monitoring symbols: {}", String.join(", ", SYMBOLS_TO_MONITOR));
         
@@ -106,10 +111,13 @@ public class DualStrategySchedulerService {
                 return;
             }
             
-            // Get historical data for EMA 200 + Trendline Strategy (1m candles)
-            logger.debug("📊 Fetching historical data for {} (EMA 200 + Trendline needs {} candles)", symbol, CANDLES_TO_FETCH);
+            // Get EMA candles for each symbol (optimized for chart matching)
+            int emaCandles = symbol.equals("BTCUSD") ? BTC_EMA_CANDLES : ETH_EMA_CANDLES;
+            
+            // Get historical data for EMA 200 calculation (1m candles)
+            logger.debug("📊 Fetching historical data for {} (EMA 200 needs {} candles)", symbol, emaCandles);
             long now = System.currentTimeMillis() / 1000;
-            long start = now - (CANDLES_TO_FETCH * 1 * 60); // 1 minute per candle
+            long start = now - (emaCandles * 60); // 1 minute per candle
             
             List<Map<String, Object>> candles = deltaApiClient.fetchOhlcv(symbol, TIMEFRAME, start, now);
             if (candles == null || candles.isEmpty()) {
@@ -117,10 +125,13 @@ public class DualStrategySchedulerService {
                 return;
             }
             
-            logger.debug("✅ Retrieved {} candles for {} EMA 200 + Trendline analysis", candles.size(), symbol);
+            logger.debug("✅ Retrieved {} candles for {} EMA 200 analysis", candles.size(), symbol);
             
-            // Add data to strategy
+            // Add EMA data to strategy
             ema200TrendlineStrategy.addCandleData(symbol, candles);
+            
+            // Since both EMA and trendline use 500 candles, no additional fetch needed
+            logger.debug("✅ Using same 500 candles for both EMA 200 and trendline analysis for {}", symbol);
 
             // Pre-trade gate: compare current MARK price to EMA-200
             Double ema200 = ema200TrendlineStrategy.getLastEma200(symbol);
@@ -263,18 +274,17 @@ public class DualStrategySchedulerService {
      */
     public String getSchedulerStatus() {
         return String.format("""
-                📊 *Dynamic Chart Strategy Status*
+                📊 *EMA 200 + Trendline Strategy Status*
                 
                 🎯 *Strategy:* %s (Cycles: %d)
-                📈 *Timeframe:* 15 minutes
-                ⚡ *Risk-Reward:* 1:2
+                📈 *Timeframe:* 1 minute
+                ⚡ *Risk-Reward:* 1:2 (0.5%% SL, 1.0%% TP)
                 
-                🔍 *Dynamic Features:*
-                • EMA 200 Trend Filter (Auto Detection)
-                • Bollinger Bands (Volatility)
+                🔍 *Strategy Features:*
+                • EMA 200 Trend Filter (BTC: 500, ETH: 500 candles)
+                • Trendline Breakouts (500 candles)
+                • Swing Point Detection
                 • Support/Resistance Levels
-                • Candlestick Patterns (Green/Red)
-                • Trend Analysis (SMA5)
                 • Real-Time Entry Prices
                 • Swing Point Based SL/TP (Last 15 Min)
                 

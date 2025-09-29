@@ -18,6 +18,7 @@ import java.util.*;
 import java.util.List;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.ArrayList;
 
 @Service
 public class EMA200TrendlineStrategy {
@@ -211,13 +212,13 @@ public class EMA200TrendlineStrategy {
                    symbol, highs.size(), lows.size(), SWING_POINTS_FOR_TRENDLINE);
         
         if (resistanceLine != null) {
-            logger.info("🔴 Resistance Line: Using {} points, Slope={:.6f}, Intercept={:.2f}", 
-                       recentHighs.size(), resistanceLine.slope, resistanceLine.intercept);
+            logger.info("🔴 Resistance Line: Using {} points, Slope={}, Intercept={}", 
+                       recentHighs.size(), String.format("%.6f", resistanceLine.slope), String.format("%.2f", resistanceLine.intercept));
         }
         
         if (supportLine != null) {
-            logger.info("🟢 Support Line: Using {} points, Slope={:.6f}, Intercept={:.2f}", 
-                       recentLows.size(), supportLine.slope, supportLine.intercept);
+            logger.info("🟢 Support Line: Using {} points, Slope={}, Intercept={}", 
+                       recentLows.size(), String.format("%.6f", supportLine.slope), String.format("%.2f", supportLine.intercept));
         }
 
         // Calculate trendline values at current position (index of the last candle)
@@ -251,8 +252,8 @@ public class EMA200TrendlineStrategy {
         }
         
         // Only continue if we detect fresh trendline structure is prepared
-        logger.info("📊 {} trendline analysis - Resistance: {:.2f}, Support: {:.2f}", 
-                   symbol, resistanceValue, supportValue);
+        logger.info("📊 {} trendline analysis - Resistance: {}, Support: {}", 
+                   symbol, String.format("%.2f", resistanceValue), String.format("%.2f", supportValue));
         
         // Use smarter market-adapted logic instead of rigid percentage requirements  
         if (!isMarketStructureFresh && resistanceLine != null && supportLine != null) {
@@ -389,19 +390,26 @@ public class EMA200TrendlineStrategy {
     public void calculateEMA(List<Candle> candles, int period) {
         if (candles.size() < period) return;
         
-        double multiplier = 2.0 / (period + 1);
+        // For EMA calculation, use 500 candles for both symbols
+        // This method is called with all candles, but we'll use optimal range
+        int optimalCandles = 500; // Use 500 candles for both BTC and ETH
+        int startIndex = Math.max(0, candles.size() - optimalCandles);
         
-        // Calculate initial SMA for first EMA value
-        double sum = 0;
-        for (int i = 0; i < period; i++) {
-            sum += candles.get(i).close;
+        // Extract close prices from optimal range
+        List<Double> closePrices = new ArrayList<>();
+        for (int i = startIndex; i < candles.size(); i++) {
+            closePrices.add(candles.get(i).close);
         }
-        candles.get(period - 1).ema200 = sum / period;
         
-        // Calculate EMA for remaining candles
-        for (int i = period; i < candles.size(); i++) {
-            double ema = (candles.get(i).close - candles.get(i - 1).ema200) * multiplier + candles.get(i - 1).ema200;
-            candles.get(i).ema200 = ema;
+        // Use the professional EMA calculator
+        double[] emaValues = EMA200Calculator.calculateEMA(closePrices, period);
+        
+        // Store EMA values back in candles (only for the optimal range)
+        for (int i = 0; i < emaValues.length; i++) {
+            int candleIndex = startIndex + i;
+            if (candleIndex < candles.size()) {
+                candles.get(candleIndex).ema200 = emaValues[i];
+            }
         }
     }
     
@@ -489,7 +497,7 @@ public class EMA200TrendlineStrategy {
         if (lastUsedResistance != null && currentResistance > 0) {
             double resistanceGap = Math.abs(currentResistance - lastUsedResistance) / lastUsedResistance;
             if (resistanceGap > FRESH_TRENDLINE_MIN_DISTANCE) {
-                logger.info("📊 {} fresh resistance gap {:.3%}", symbol, resistanceGap);
+                logger.info("📊 {} fresh resistance gap {}", symbol, String.format("%.3f%%", resistanceGap * 100));
                 freshFactors++;
             }
         } else if (currentResistance > 0) {
@@ -499,7 +507,7 @@ public class EMA200TrendlineStrategy {
         if (lastUsedSupport != null && currentSupport > 0) {
             double supportGap = Math.abs(currentSupport - lastUsedSupport) / lastUsedSupport;
             if (supportGap > FRESH_TRENDLINE_MIN_DISTANCE) {
-                logger.info("📊 {} fresh support gap {:.3%}", symbol, supportGap);
+                logger.info("📊 {} fresh support gap {}", symbol, String.format("%.3f%%", supportGap * 100));
                 freshFactors++;
             }
         } else if (currentSupport > 0) {
@@ -637,18 +645,31 @@ public class EMA200TrendlineStrategy {
 
     /**
      * Return last EMA-200 value computed for the given symbol, if available.
-     * Requires that candle data has been added; will compute EMA if missing.
+     * Uses the professional EMA200Calculator for accurate results.
      */
     public Double getLastEma200(String symbol) {
         List<Candle> candles = candlesData.get(symbol);
         if (candles == null || candles.size() < EMA_PERIOD) {
             return null;
         }
-        // Ensure EMA is populated
-        if (candles.get(candles.size() - 1).ema200 == 0.0) {
-            calculateEMA(candles, EMA_PERIOD);
+        
+        // For EMA calculation, use 500 candles for both symbols
+        int optimalCandles = 500;
+        int startIndex = Math.max(0, candles.size() - optimalCandles);
+        
+        // Extract close prices from optimal range
+        List<Double> closePrices = new ArrayList<>();
+        for (int i = startIndex; i < candles.size(); i++) {
+            closePrices.add(candles.get(i).close);
         }
-        return candles.get(candles.size() - 1).ema200;
+        
+        try {
+            // Use professional EMA calculator with optimal candles
+            return EMA200Calculator.getEMA200(closePrices);
+        } catch (Exception e) {
+            logger.warn("Error calculating EMA 200 for {}: {}", symbol, e.getMessage());
+            return null;
+        }
     }
     
     /**

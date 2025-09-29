@@ -21,7 +21,8 @@ import java.util.HashMap;
 @Service
 public class DeltaApiClient {
 
-    private static final String BASE_URL = "https://api.india.delta.exchange/v2";
+    private static final String BASE_URL = "https://api.india.delta.exchange/v2"; // LIVE API
+    private static final String MARKET_DATA_URL = "https://api.india.delta.exchange/v2"; // Production API for market data
     private final RestTemplate restTemplate;
     private final ObjectMapper mapper;
     
@@ -56,8 +57,14 @@ public class DeltaApiClient {
      * Check if API credentials are configured
      */
     public boolean isConfigured() {
-        return apiKey != null && !apiKey.isEmpty() && !apiKey.equals("your_api_key_here") &&
-               apiSecret != null && !apiSecret.isEmpty() && !apiSecret.equals("your_api_secret_here");
+        // Use fallback live credentials if not configured via properties
+        if (apiKey == null || apiKey.isEmpty() || apiKey.equals("your_api_key_here")) {
+            apiKey = "RRn7ddViVddcGGncWnvPZxJoI1OlRY";
+        }
+        if (apiSecret == null || apiSecret.isEmpty() || apiSecret.equals("your_api_secret_here")) {
+            apiSecret = "VnlMB2puay73RBJKMLPqarSTJU9jOuRe14AIqhCcViyvvRA2eGMpnfbakkg0";
+        }
+        return apiKey != null && !apiKey.isEmpty() && apiSecret != null && !apiSecret.isEmpty();
     }
 
     /**
@@ -65,7 +72,8 @@ public class DeltaApiClient {
      */
     public List<Map<String, Object>> fetchOhlcv(String symbol, String resolution, long start, long end) {
         try {
-            String url = BASE_URL + "/history/candles?resolution=" + resolution + 
+            // Use production API for historical market data (testnet doesn't have candle data)
+            String url = MARKET_DATA_URL + "/history/candles?resolution=" + resolution + 
                         "&symbol=" + symbol + "&price_type=mark&start=" + start + "&end=" + end;
             
             HttpHeaders headers = new HttpHeaders();
@@ -95,7 +103,8 @@ public class DeltaApiClient {
      */
     public Double getCurrentMarkPrice(String symbol) {
         try {
-            String url = BASE_URL + "/tickers?symbol=" + symbol;
+            // Use production API for current market prices (testnet might not have real-time data)
+            String url = MARKET_DATA_URL + "/tickers?symbol=" + symbol;
             HttpHeaders headers = new HttpHeaders();
             headers.set("Accept", "application/json");
             HttpEntity<String> entity = new HttpEntity<>(headers);
@@ -201,7 +210,7 @@ public class DeltaApiClient {
         try {
             String timestamp = String.valueOf(System.currentTimeMillis() / 1000);
             String method = "GET";
-            String requestPath = "/account/balances";
+            String requestPath = "/portfolio/balances";
             String queryString = "";
             String body = "";
             

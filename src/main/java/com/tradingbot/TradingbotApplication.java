@@ -1,10 +1,11 @@
 package com.tradingbot;
 
-import com.tradingbot.service.CryptoPriceService;
 import com.tradingbot.service.TelegramNotificationService;
 import com.tradingbot.service.DualStrategySchedulerService;
 import com.tradingbot.service.SLTPMonitoringService;
 import com.tradingbot.service.PositionManagementService;
+import com.tradingbot.service.PositionChecker;
+import com.tradingbot.service.BalanceCheck;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.CommandLineRunner;
@@ -34,12 +35,18 @@ public class TradingbotApplication implements CommandLineRunner {
 	@Autowired
 	private com.tradingbot.service.AlertVerificationService alertVerificationService;
 	
+	@Autowired
+	private PositionChecker positionChecker;
+	
+	@Autowired
+	private BalanceCheck balanceCheck;
+	
 	
 	
 
 	public static void main(String[] args) {
 		logger.info("🚀 Starting Trading Bot Application...");
-		logger.info("📊 Application Version: 6.0 - Swing Point Based Strategy");
+		logger.info("📊 Application Version: 7.0 - EMA 200 + Trendline Strategy (1m)");
 		logger.info("⏰ Startup Time: {}", java.time.LocalDateTime.now());
 		
 		try {
@@ -53,16 +60,80 @@ public class TradingbotApplication implements CommandLineRunner {
 
 	@Override
 	public void run(String... args) throws Exception {
-		logger.info("🔄 CommandLineRunner started - Initializing scheduler...");
+		logger.info("🔄 CommandLineRunner started - Checking existing positions...");
+		
+		// First, check for existing positions to prevent duplicates
+		checkExistingPositions();
+		
+		// Then initialize the scheduler
 		initializeScheduler();
 		logger.info("✅ CommandLineRunner completed successfully");
 	}
 	
 	/**
-	 * Initialize Aggressive Chart Technical Analysis Strategy Scheduler
+	 * Check for existing positions on startup to prevent duplicates
+	 */
+	public void checkExistingPositions() {
+		logger.info("🔍 CHECKING EXISTING POSITIONS ON STARTUP");
+		logger.info("==========================================");
+		
+		try {
+			// Check balance first
+			logger.info("💰 Checking current balance...");
+			balanceCheck.printBalance();
+			
+			// Check for existing positions
+			logger.info("📊 Checking for existing positions...");
+			
+			boolean hasBtcPosition = positionChecker.hasOpenPosition("BTCUSD");
+			boolean hasEthPosition = positionChecker.hasOpenPosition("ETHUSD");
+			
+			logger.info("📋 POSITION SUMMARY:");
+			logger.info("===================");
+			logger.info("BTCUSD Position: {}", hasBtcPosition ? "⚠️ OPEN" : "✅ NONE");
+			logger.info("ETHUSD Position: {}", hasEthPosition ? "⚠️ OPEN" : "✅ NONE");
+			
+			if (hasBtcPosition || hasEthPosition) {
+				logger.warn("⚠️ EXISTING POSITIONS DETECTED - Duplicate Prevention ACTIVE");
+				logger.warn("🛡️ New BUY orders for existing positions will be BLOCKED");
+				logger.warn("✅ SELL orders to close positions will be ALLOWED");
+				
+				// Send notification about existing positions
+				String positionMessage = String.format("""
+					🛡️ *Position Check Complete*
+					
+					📊 *Current Positions:*
+					• BTCUSD: %s
+					• ETHUSD: %s
+					
+					🛡️ *Duplicate Prevention: ACTIVE*
+					• Existing positions protected from duplicate BUY orders
+					• SELL orders allowed to close positions
+					
+					✅ *Bot ready for trading with position protection!*
+					""", 
+					hasBtcPosition ? "⚠️ OPEN" : "✅ NONE",
+					hasEthPosition ? "⚠️ OPEN" : "✅ NONE"
+				);
+				
+				telegramService.sendTelegramMessage(positionMessage);
+			} else {
+				logger.info("✅ No existing positions found - Ready for new trades");
+			}
+			
+			logger.info("✅ Position check completed successfully");
+			
+		} catch (Exception e) {
+			logger.error("❌ Error checking existing positions: {}", e.getMessage(), e);
+			logger.warn("⚠️ Continuing with startup - position checking will be done per-trade");
+		}
+	}
+	
+	/**
+	 * Initialize EMA 200 + Trendline Strategy Scheduler
 	 */
 	public void initializeScheduler() {
-		logger.info("🚀 INITIALIZING AGGRESSIVE CHART TECHNICAL ANALYSIS STRATEGY SCHEDULER");
+		logger.info("🚀 INITIALIZING EMA 200 + TRENDLINE STRATEGY SCHEDULER");
 		logger.info("=" + "=".repeat(50));
 		
 		try {
@@ -72,52 +143,51 @@ public class TradingbotApplication implements CommandLineRunner {
 			
 			// Send startup notification
 			String startupMessage = """
-				🚀 *Aggressive Chart Technical Analysis Strategy Activated*
+				🚀 *EMA 200 + Trendline Strategy Activated*
 				
 				⏰ *Scheduler Configuration:*
-				• Aggressive Chart Strategy: Every 15 minutes
-				• Timeframe: 15-minute candles
+				• EMA 200 + Trendline Strategy: Every 5 minutes
+				• Timeframe: 1-minute candles
 				
-				🔍 *Chart Elements Handled:*
-				• Price Movement (Uptrend/Downtrend)
-				• Bollinger Bands (Volatility)
-				• Support/Resistance Levels
-				• Candlestick Patterns (Green/Red)
-				• Trend Analysis (SMA5)
-				• Risk-Reward: 1:2
+				🔍 *Strategy Features:*
+				• EMA 200 Trend Filter (200-period)
+				• Swing Point Detection
+				• Trendline Breakouts (Support/Resistance)
+				• Fresh Trendline Validation
+				• Risk-Reward: 1:2 (0.5% SL, 1.0% TP)
 				
 				📊 *Monitoring:* BTCUSD, ETHUSD
 				
 				📱 *You'll receive notifications for:*
-				• BUY signals (Price uptrend, Support bounces, Bullish patterns)
-				• SELL signals (Price downtrend, Resistance rejections, Bearish patterns)
+				• BUY signals (Price > EMA200 + Resistance breakout)
+				• SELL signals (Price < EMA200 + Support breakout)
 				• Exit notifications (SL/TP)
 				
-				✅ *Aggressive Chart Technical Analysis Strategy is now running automatically!*
+				✅ *EMA 200 + Trendline Strategy is now running automatically!*
 				""";
 			
 			logger.info("📱 Sending startup notification to Telegram...");
 			telegramService.sendTelegramMessage(startupMessage);
 			logger.info("✅ Startup notification sent successfully");
 			
-			// Start SL/TP monitoring (every 50 seconds)
+			// Start SL/TP monitoring (every 10 seconds)
 			logger.info("🛡️ Starting SL/TP monitoring service...");
 			sltpMonitoringService.startMonitoring();
 			logger.info("✅ SL/TP monitoring service started");
 			
-			logger.info("✅ Aggressive Chart Technical Analysis Strategy Scheduler is now active!");
-			logger.info("📱 Check your Telegram for aggressive chart pattern notifications!");
-			logger.info("⏰ Strategy runs every 15 minutes");
+			logger.info("✅ EMA 200 + Trendline Strategy Scheduler is now active!");
+			logger.info("📱 Check your Telegram for EMA 200 + Trendline notifications!");
+			logger.info("⏰ Strategy runs every 5 minutes");
 			
 			// Send alert verification message
 			logger.info("📢 Sending alert verification message...");
 			alertVerificationService.sendAlertVerificationMessage();
 			logger.info("✅ Alert verification message sent");
 			
-			logger.info("🎉 Aggressive Chart Technical Analysis Strategy initialization completed successfully!");
+			logger.info("🎉 EMA 200 + Trendline Strategy initialization completed successfully!");
 			
 		} catch (Exception e) {
-			logger.error("❌ Error initializing Aggressive Chart Technical Analysis Strategy Scheduler", e);
+			logger.error("❌ Error initializing EMA 200 + Trendline Strategy Scheduler", e);
 			logger.error("Error details: {}", e.getMessage(), e);
 		}
 	}

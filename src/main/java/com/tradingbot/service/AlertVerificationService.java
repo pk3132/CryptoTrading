@@ -35,7 +35,7 @@ public class AlertVerificationService {
                 ✅ Take Profit Alerts
                 
                 🛡️ *Monitoring Alerts:*
-                ✅ SL/TP Monitoring (Every 50 seconds)
+                ✅ SL/TP Monitoring (Every 10 seconds)
                 ✅ Position Status Updates
                 ✅ Exit Notifications
                 
@@ -47,8 +47,8 @@ public class AlertVerificationService {
                 • 📊 STATUS UPDATES
                 
                 ⚡ *Strategy Details:*
-                • Timeframe: 15 minutes
-                • Risk-Reward: 1:2
+                • Timeframe: 5 minutes
+                • Risk-Reward: 1:2 (0.5% SL, 1.0% TP)
                 • Symbols: BTCUSD, ETHUSD
                 • Professional Grade Aggressive Chart Analysis
                 
@@ -118,7 +118,7 @@ public class AlertVerificationService {
                 
                 ⚡ *Strategy Details:*
                 • EMA 200 + Trendline Breakout
-                • Risk-Reward Ratio: 1:2
+                • Risk-Reward Ratio: 1:2 (0.5% SL, 1.0% TP)
                 • Market Order Execution
                 • Professional Grade Strategy
                 
@@ -160,7 +160,7 @@ public class AlertVerificationService {
                 • EMA 200 + Trendline Breakout
                 • BUY: Price > EMA200 + breaks above descending resistance
                 • SELL: Price < EMA200 + breaks below ascending support
-                • Risk-Reward Ratio: 1:2 (2%% SL, 4%% TP)
+                • Risk-Reward Ratio: 1:2 (0.5% SL, 1.0% TP)
                 • Market Order Execution
                 • Professional Grade Strategy
                 
