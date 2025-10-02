@@ -73,7 +73,7 @@ public class DualStrategySchedulerService {
         logger.info("🎯 EMA 200 + TRENDLINE STRATEGY EXECUTION #{} - {}", strategyCycles, timestamp);
         logger.info("📊 Strategy: EMA 200 + Trendline Breakout");
         logger.info("📈 Timeframe: 15 minutes");
-        logger.info("⚡ Risk-Reward: 1:2 (0.5% SL, 1.0% TP)");
+        logger.info("⚡ Risk-Reward: 1:3 (0.2% SL, 0.6% TP)");
         logger.info("🔍 Features: EMA 200 Filter, Swing Points, Trendline Breakouts");
         logger.debug("Monitoring symbols: {}", String.join(", ", SYMBOLS_TO_MONITOR));
         
@@ -278,7 +278,7 @@ public class DualStrategySchedulerService {
                 
                 🎯 *Strategy:* %s (Cycles: %d)
                 📈 *Timeframe:* 1 minute
-                ⚡ *Risk-Reward:* 1:2 (0.5%% SL, 1.0%% TP)
+                ⚡ *Risk-Reward:* 1:3 (0.2%% SL, 0.6%% TP)
                 
                 🔍 *Strategy Features:*
                 • EMA 200 Trend Filter (BTC: 500, ETH: 500 candles)

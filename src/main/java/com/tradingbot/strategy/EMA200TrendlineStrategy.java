@@ -2,9 +2,11 @@ package com.tradingbot.strategy;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.tradingbot.service.PositionChecker;
 import org.apache.commons.math3.stat.regression.SimpleRegression;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.net.URI;
@@ -24,11 +26,14 @@ import java.util.ArrayList;
 public class EMA200TrendlineStrategy {
     private static final Logger logger = LoggerFactory.getLogger(EMA200TrendlineStrategy.class);
     
+    @Autowired
+    private PositionChecker positionChecker;
+    
     // Configuration
     private static final int LOOKBACK_PERIOD = 50;
     private static final int EMA_PERIOD = 200;
-    private static final double STOP_LOSS_PCT = 0.005; // 0.50%
-    private static final double TAKE_PROFIT_PCT = 0.01; // 1.00%
+    private static final double STOP_LOSS_PCT = 0.002; // 0.20%
+    private static final double TAKE_PROFIT_PCT = 0.006; // 0.60%
     private static final int SWING_POINTS_FOR_TRENDLINE = 3; // Use last 3 swing points for more robust trendlines
     private static final boolean REQUIRE_CLOSE_BREAKOUT = true; // Require close candle breakout, not wick
     private static final double FRESH_TRENDLINE_MIN_DISTANCE = 0.002; // 0.2% minimum distance for NEW trendlines 
@@ -36,7 +41,7 @@ public class EMA200TrendlineStrategy {
     
     // ================== NEW STATE TRACKERS ==================
     private Map<String, String> activePosition = new HashMap<>(); // symbol -> BUY/SELL/NONE
-    private Map<String, Integer> lastExitIndex = new HashMap<>(); // symbol -> last exit candle index
+    private Map<String, Integer> lastExitCandleIndex = new HashMap<>(); // symbol -> candle index at exit
     private static final int COOLDOWN_CANDLES = 5; // wait 5 candles after exit
     // ========================================================
     
@@ -122,9 +127,9 @@ public class EMA200TrendlineStrategy {
     }
 
     public void addCandleData(String symbol, List<Map<String, Object>> rawCandles) {
-        List<Candle> candles = new ArrayList<>();
+        List<Candle> newCandles = new ArrayList<>();
         for (Map<String, Object> c : rawCandles) {
-            candles.add(new Candle(
+            newCandles.add(new Candle(
                 ((Number) c.get("time")).longValue(),
                 ((Number) c.get("open")).doubleValue(),
                 ((Number) c.get("high")).doubleValue(),
@@ -133,7 +138,33 @@ public class EMA200TrendlineStrategy {
                 ((Number) c.get("volume")).doubleValue()
             ));
         }
-        candlesData.put(symbol, candles);
+        
+        // 🔧 FIX: Track candle shifts to maintain correct exit indices
+        List<Candle> oldCandles = candlesData.get(symbol);
+        if (oldCandles != null && !oldCandles.isEmpty() && lastExitCandleIndex.containsKey(symbol)) {
+            long oldLatestTime = oldCandles.get(oldCandles.size() - 1).time;
+            long newLatestTime = newCandles.get(newCandles.size() - 1).time;
+            
+            if (newLatestTime > oldLatestTime) {
+                // Candle resolution in seconds (1m = 60s)
+                int resolutionSeconds = 60;
+                int newCandlesCount = (int) ((newLatestTime - oldLatestTime) / resolutionSeconds);
+                
+                int currentExitIndex = lastExitCandleIndex.get(symbol);
+                int adjustedExitIndex = currentExitIndex - newCandlesCount;
+                
+                if (adjustedExitIndex >= 0) {
+                    lastExitCandleIndex.put(symbol, adjustedExitIndex);
+                    logger.debug("🔄 {} - Adjusted exit index: {} → {} (new candles: {})",
+                                symbol, currentExitIndex, adjustedExitIndex, newCandlesCount);
+                } else {
+                    logger.info("🗑️ {} - Exit candle expired from window, clearing cooldown", symbol);
+                    lastExitCandleIndex.remove(symbol);
+                }
+            }
+        }
+        
+        candlesData.put(symbol, newCandles);
     }
 
     public List<TradeSignal> checkSignals(String symbol) {
@@ -153,13 +184,57 @@ public class EMA200TrendlineStrategy {
         String currentPos = activePosition.getOrDefault(symbol, "NONE");
         int x_now = candles.size() - 1;
         
-        // ✅ Cooldown check
-        if (lastExitIndex.containsKey(symbol)) {
-            int lastExit = lastExitIndex.get(symbol);
-            if (x_now - lastExit < COOLDOWN_CANDLES) {
-                logger.info("⏸️ {} - Cooldown active, skipping new trade (candles: {}/{})", 
-                           symbol, x_now - lastExit, COOLDOWN_CANDLES);
-                return signals;
+        // 📌 Position State Logging - Always log current state
+        int lastExitIndex = lastExitCandleIndex.getOrDefault(symbol, -1);
+        int candlesSinceExitForLog = (lastExitIndex == -1) ? -1 : (x_now - lastExitIndex);
+        logger.info("📌 {} Position State: {}, Candles Since Exit: {}/{}", 
+                    symbol, currentPos, (candlesSinceExitForLog >= 0 ? candlesSinceExitForLog : 0), COOLDOWN_CANDLES);
+        
+        // 🛡️ Auto-reset Safeguard - Check for state mismatch (bidirectional)
+        try {
+            boolean dbHasPosition = positionChecker.hasOpenPosition(symbol);
+            
+            // Case 1: Memory says position exists, but DB says NO
+            if (!dbHasPosition && !"NONE".equals(currentPos)) {
+                logger.warn("⚠️ State mismatch detected for {}. Bot memory says position={}, " +
+                           "but DB shows NONE. Resetting state.", symbol, currentPos);
+                activePosition.put(symbol, "NONE");
+                lastExitCandleIndex.remove(symbol); // Clear cooldown
+                logger.info("✅ {} state auto-reset to NONE - Ready for new trades", symbol);
+            }
+            
+            // Case 2: DB says position exists, but Memory says NONE (e.g., after restart)
+            if (dbHasPosition && "NONE".equals(currentPos)) {
+                logger.warn("⚠️ Reverse mismatch detected for {}. DB has OPEN position, " +
+                           "but bot memory says NONE. This can happen after restart.", symbol);
+                logger.info("ℹ️ {} - Skipping new trades as DB position exists. " +
+                           "Wait for SL/TP to close it.", symbol);
+                // Don't generate new signals if DB has open position
+                return signals; // Return empty signals
+            }
+        } catch (Exception e) {
+            logger.error("❌ Error checking position state for {}: {}", symbol, e.getMessage());
+        }
+        
+        // ================== COOLDOWN CHECK (index-based) ==================
+        if (lastExitCandleIndex.containsKey(symbol)) {
+            int lastExit = lastExitCandleIndex.get(symbol);
+            int candlesSinceExit = x_now - lastExit;
+            
+            if (candlesSinceExit < 0) {
+                // Defensive: reset state if data regression happened
+                logger.warn("⚠️ {} - Inconsistent candle indexing: currentIndex={} < lastExitIndex={}. Resetting cooldown.",
+                            symbol, x_now, lastExit);
+                lastExitCandleIndex.remove(symbol);
+            } else if (candlesSinceExit < COOLDOWN_CANDLES) {
+                logger.info("⏸️ {} - Cooldown active, skipping new trade (candles: {}/{})",
+                            symbol, candlesSinceExit, COOLDOWN_CANDLES);
+                return signals; // block trade
+            } else {
+                logger.info("✅ {} - Cooldown expired, trade signals enabled (candles: {}/{})",
+                            symbol, candlesSinceExit, COOLDOWN_CANDLES);
+                // clear cooldown so we don't re-evaluate every cycle
+                lastExitCandleIndex.remove(symbol);
             }
         }
 
@@ -276,36 +351,41 @@ public class EMA200TrendlineStrategy {
         if (currentPrice > emaValue) {
             // STEP 1 PASSED: BTC > EMA200 ✅ 
             // STEP 2: Check resistance breakout
-            if (resistanceLine != null) {
+            if (resistanceLine != null && hasNewResistance) {
                 boolean breakoutConfirmed = false;
-                String breakoutType = "";
-                
+
                 if (REQUIRE_CLOSE_BREAKOUT) {
-                    // Require close candle breakout (not wick)
-                    breakoutConfirmed = lastCandle.close > resistanceValue;
-                    breakoutType = "Close Breakout";
+                    if (lastCandle.close > resistanceValue) {
+                        breakoutConfirmed = true;
+                        logger.info("✅ {} BUY Breakout Confirmed by CLOSE: Close={} > Resistance={}", 
+                                    symbol, lastCandle.close, resistanceValue);
+                    } else {
+                        logger.info("❌ {} BUY Breakout Rejected: Candle closed below resistance. "
+                                   + "Close={} <= Resistance={} (Wick may have crossed)", 
+                                    symbol, lastCandle.close, resistanceValue);
+                    }
                 } else {
-                    // Allow wick breakout
-                    breakoutConfirmed = currentPrice > resistanceValue;
-                    breakoutType = "Price Breakout";
+                    if (currentPrice > resistanceValue) {
+                        breakoutConfirmed = true;
+                        logger.info("✅ {} BUY Breakout Confirmed by PRICE Wick: Price={} > Resistance={}", 
+                                    symbol, currentPrice, resistanceValue);
+                    } else {
+                        logger.info("❌ {} BUY Breakout Rejected: Price did not cross resistance. "
+                                   + "Price={} <= Resistance={}", 
+                                    symbol, currentPrice, resistanceValue);
+                    }
                 }
-                
-                if (breakoutConfirmed && !currentPos.equals("BUY")) {  // prevent duplicate BUY
-                    // CONDITIONS MET: BTC > EMA200 + Resistance Breakout = BUY
-                    logger.info("✅ BUY Signal Confirmed: breakout at {} vs resistance {}", 
-                               lastCandle.close, resistanceValue);
+
+                if (breakoutConfirmed && !currentPos.equals("BUY")) {
                     double stopLoss = currentPrice * (1 - STOP_LOSS_PCT);
                     double takeProfit = currentPrice * (1 + TAKE_PROFIT_PCT);
                     signals.add(new TradeSignal("BUY", currentPrice, stopLoss, takeProfit,
-                        String.format("BUY Signal: BTC > EMA200 (%.2f > %.2f) + Resistance %s (Close: %.2f > %.2f)", 
-                            currentPrice, emaValue, breakoutType, lastCandle.close, resistanceValue)));
+                        String.format("BUY: %s > EMA200 + Resistance Breakout at Close %.2f vs Resistance %.2f", 
+                                      symbol, lastCandle.close, resistanceValue)));
                     
                     // Record position
                     activePosition.put(symbol, "BUY");
                     logger.info("🎯 {} position set to BUY", symbol);
-                } else if (!breakoutConfirmed) {
-                    logger.debug("❌ BUY Signal Blocked: Resistance breakout not confirmed (Close: %.2f, Resistance: %.2f)", 
-                                lastCandle.close, resistanceValue);
                 } else if (currentPos.equals("BUY")) {
                     logger.debug("🔄 {} - Already in BUY position, skipping duplicate", symbol);
                 }
@@ -316,36 +396,41 @@ public class EMA200TrendlineStrategy {
         if (currentPrice < emaValue) {
             // STEP 1 PASSED: BTC < EMA200 ✅  
             // STEP 2: Check support breakout
-            if (supportLine != null) {
+            if (supportLine != null && hasNewSupport) {
                 boolean breakoutConfirmed = false;
-                String breakoutType = "";
-                
+
                 if (REQUIRE_CLOSE_BREAKOUT) {
-                    // Require close candle breakout (not wick)
-                    breakoutConfirmed = lastCandle.close < supportValue;
-                    breakoutType = "Close Breakout";
+                    if (lastCandle.close < supportValue) {
+                        breakoutConfirmed = true;
+                        logger.info("✅ {} SELL Breakout Confirmed by CLOSE: Close={} < Support={}", 
+                                    symbol, lastCandle.close, supportValue);
+                    } else {
+                        logger.info("❌ {} SELL Breakout Rejected: Candle closed above support. "
+                                   + "Close={} >= Support={} (Wick may have crossed)", 
+                                    symbol, lastCandle.close, supportValue);
+                    }
                 } else {
-                    // Allow wick breakout
-                    breakoutConfirmed = currentPrice < supportValue;
-                    breakoutType = "Price Breakout";
+                    if (currentPrice < supportValue) {
+                        breakoutConfirmed = true;
+                        logger.info("✅ {} SELL Breakout Confirmed by PRICE Wick: Price={} < Support={}", 
+                                    symbol, currentPrice, supportValue);
+                    } else {
+                        logger.info("❌ {} SELL Breakout Rejected: Price did not cross support. "
+                                   + "Price={} >= Support={}", 
+                                    symbol, currentPrice, supportValue);
+                    }
                 }
-                
-                if (breakoutConfirmed && !currentPos.equals("SELL")) {  // prevent duplicate SELL
-                    // CONDITIONS MET: BTC < EMA200 + Support Breakout = SELL
-                    logger.info("✅ SELL Signal Confirmed: breakout at {} vs support {}", 
-                               lastCandle.close, supportValue);
+
+                if (breakoutConfirmed && !currentPos.equals("SELL")) {
                     double stopLoss = currentPrice * (1 + STOP_LOSS_PCT);
                     double takeProfit = currentPrice * (1 - TAKE_PROFIT_PCT);
                     signals.add(new TradeSignal("SELL", currentPrice, stopLoss, takeProfit,
-                        String.format("SELL Signal: BTC < EMA200 (%.2f < %.2f) + Support %s (Close: %.2f < %.2f)", 
-                            currentPrice, emaValue, breakoutType, lastCandle.close, supportValue)));
+                        String.format("SELL: %s < EMA200 + Support Breakdown at Close %.2f vs Support %.2f", 
+                                      symbol, lastCandle.close, supportValue)));
                     
                     // Record position
                     activePosition.put(symbol, "SELL");
                     logger.info("🎯 {} position set to SELL", symbol);
-                } else if (!breakoutConfirmed) {
-                    logger.debug("❌ SELL Signal Blocked: Support breakout not confirmed (Close: %.2f, Support: %.2f)", 
-                                lastCandle.close, supportValue);
                 } else if (currentPos.equals("SELL")) {
                     logger.debug("🔄 {} - Already in SELL position, skipping duplicate", symbol);
                 }
@@ -677,13 +762,21 @@ public class EMA200TrendlineStrategy {
      * Called when trade closes to track exit and start cooldown
      */
     public void closeTrade(String symbol, String reason) {
-        activePosition.put(symbol, "NONE");                 // reset position
+        activePosition.put(symbol, "NONE"); // reset position
         List<Candle> candles = candlesData.get(symbol);
         if (candles != null && !candles.isEmpty()) {
-            lastExitIndex.put(symbol, candles.size() - 1); // mark exit candle
+            int exitIndex = candles.size() - 1; // index of the exit candle
+            lastExitCandleIndex.put(symbol, exitIndex);
+            
+            logger.info("✅ {} trade closed at candle index {}. Reason: {}. Cooldown started.",
+                        symbol, exitIndex, reason);
+            logger.info("   📅 Exit candle time: {}", 
+                       LocalDateTime.ofEpochSecond(candles.get(exitIndex).time, 0, ZoneOffset.UTC).toString());
+        } else {
+            // if no candle present, remove any previous cooldown to avoid permanent block
+            lastExitCandleIndex.remove(symbol);
+            logger.warn("⚠️ {} trade closed but no candle data available. Reason: {}", symbol, reason);
         }
-        logger.info("✅ {} trade closed. Reason: {}. Cooldown started ({} candles required).", 
-                     symbol, reason, COOLDOWN_CANDLES);
     }
     
     /**
@@ -697,12 +790,13 @@ public class EMA200TrendlineStrategy {
      * Get cooldown info
      */
     public String getCooldownInfo(String symbol) {
-        if (lastExitIndex.containsKey(symbol)) {
+        if (lastExitCandleIndex.containsKey(symbol)) {
             List<Candle> candles = candlesData.get(symbol);
             if (candles != null) {
                 int currentIndex = candles.size() - 1;
-                int lastExit = lastExitIndex.get(symbol);
-                int remainingCandles = COOLDOWN_CANDLES - (currentIndex - lastExit);
+                int lastExit = lastExitCandleIndex.get(symbol);
+                int candlesSinceExit = currentIndex - lastExit;
+                int remainingCandles = COOLDOWN_CANDLES - candlesSinceExit;
                 if (remainingCandles > 0) {
                     return String.format("%s: %d/%d candles remaining", symbol, remainingCandles, COOLDOWN_CANDLES);
                 }

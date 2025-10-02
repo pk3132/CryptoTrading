@@ -13,9 +13,13 @@ import org.springframework.context.annotation.ComponentScan;
 /**
  * Execute pending trades with minimum quantity
  */
-@SpringBootApplication
-@ComponentScan(basePackages = "com.tradingbot")
-public class ExecutePendingTrades implements CommandLineRunner {
+/**
+ * DISABLED: This is a testing tool, should not run with main app
+ * To use: Uncomment @SpringBootApplication and @ComponentScan, then run separately
+ */
+// @SpringBootApplication
+// @ComponentScan(basePackages = "com.tradingbot")
+public class ExecutePendingTrades { // implements CommandLineRunner {
     
     private static final Logger logger = LoggerFactory.getLogger(ExecutePendingTrades.class);
     
@@ -25,8 +29,11 @@ public class ExecutePendingTrades implements CommandLineRunner {
     @Autowired
     private BalanceCheck balanceCheck;
     
-    @Override
-    public void run(String... args) throws Exception {
+    /**
+     * DISABLED: This method won't run because class doesn't implement CommandLineRunner
+     * To enable: Uncomment @SpringBootApplication and implements CommandLineRunner
+     */
+    public void runManually(String... args) throws Exception {
         logger.info("🚀 EXECUTING PENDING TRADES WITH MINIMUM QUANTITY");
         logger.info("================================================");
         

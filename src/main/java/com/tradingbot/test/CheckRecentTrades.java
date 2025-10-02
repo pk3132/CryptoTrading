@@ -89,12 +89,12 @@ public class CheckRecentTrades {
                         // Calculate potential SL/TP levels
                         if (openTrade.getEntryPrice() != null) {
                             double entryPrice = openTrade.getEntryPrice();
-                            double stopLoss = entryPrice * 0.995; // -0.5%
-                            double takeProfit = entryPrice * 1.01; // +1.0%
+                            double stopLoss = entryPrice * 0.998; // -0.2%
+                            double takeProfit = entryPrice * 1.006; // +0.6%
                             
                             logger.info("   📊 Estimated SL/TP Levels:");
-                            logger.info("      Stop Loss: ${} (-0.5%)", String.format("%.2f", stopLoss));
-                            logger.info("      Take Profit: ${} (+1.0%)", String.format("%.2f", takeProfit));
+                            logger.info("      Stop Loss: ${} (-0.2%)", String.format("%.2f", stopLoss));
+                            logger.info("      Take Profit: ${} (+0.6%)", String.format("%.2f", takeProfit));
                         }
                         logger.info("");
                     }

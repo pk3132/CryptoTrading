@@ -57,10 +57,10 @@ public class CheckSLTPLevels {
                     logger.info("   Product ID: {}", ethPosition.productId);
                     logger.info("");
                     
-                    // Calculate potential SL/TP levels (based on standard 0.5% SL, 1.0% TP)
+                    // Calculate potential SL/TP levels (based on standard 0.2% SL, 0.6% TP)
                     double entryPrice = ethPosition.entryPrice;
-                    double slPct = 0.005; // 0.5%
-                    double tpPct = 0.01;  // 1.0%
+                    double slPct = 0.002; // 0.2%
+                    double tpPct = 0.006; // 0.6%
                     
                     double stopLoss = entryPrice * (1 - slPct);
                     double takeProfit = entryPrice * (1 + tpPct);
@@ -153,8 +153,8 @@ public class CheckSLTPLevels {
                 PositionChecker.PositionInfo ethPosition = positionChecker.getPositionForSymbol("ETHUSD");
                 if (ethPosition != null) {
                     double entryPrice = ethPosition.entryPrice;
-                    double stopLoss = entryPrice * 0.995; // -0.5%
-                    double takeProfit = entryPrice * 1.01; // +1.0%
+                    double stopLoss = entryPrice * 0.998; // -0.2%
+                    double takeProfit = entryPrice * 1.006; // +0.6%
                     double currentPnL = (ethPrice - entryPrice) * ethPosition.size;
                     
                     logger.info("• ETH Entry: ${}", String.format("%.2f", entryPrice));

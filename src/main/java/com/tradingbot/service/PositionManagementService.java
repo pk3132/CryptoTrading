@@ -24,6 +24,8 @@ import java.util.Map;
 @Service
 public class PositionManagementService {
 
+    private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(PositionManagementService.class);
+
     @Autowired
     private TradeRepository tradeRepository;
     
@@ -71,31 +73,74 @@ public class PositionManagementService {
 
     /**
      * Enhanced logic: Must wait for FRESH trendline (different from last one used) + breakout
+     * With auto-sync to prevent stuck states
      */
     public boolean isInCooldown(String symbol) {
+        logger.info("═══════════════════════════════════════════════════════════");
+        logger.info("🔍 COOLDOWN CHECK for {}", symbol);
+        
         TrendlineState state = symbolTrendlineState.get(symbol);
         if (state == null) {
+            logger.info("✅ {} - No cooldown state found", symbol);
+            logger.info("✅ {} - READY FOR NEW TRADES", symbol);
+            logger.info("═══════════════════════════════════════════════════════════");
             return false; // No recent profitable trade
+        }
+        
+        logger.info("📊 {} - Cooldown state exists", symbol);
+        logger.info("   hasNewTrendline: {}", state.hasNewTrendline);
+        logger.info("   trendlineBroken: {}", state.trendlineBroken);
+        logger.info("   lastTrendlineValue: {}", state.lastTrendlineValue);
+        logger.info("   previousTrendlineValue: {}", state.previousTrendlineValue);
+        
+        // 🛡️ Auto-sync: Check if position actually exists in database
+        try {
+            boolean dbHasPosition = positionChecker.hasOpenPosition(symbol);
+            logger.info("🗄️ {} - Database position check: {}", symbol, (dbHasPosition ? "OPEN" : "CLOSED"));
+            
+            if (!dbHasPosition) {
+                // Position closed in DB but cooldown state exists - clear it
+                logger.warn("⚠️ {} - MISMATCH DETECTED!", symbol);
+                logger.warn("   Database: Position CLOSED");
+                logger.warn("   Memory: Cooldown state EXISTS");
+                logger.info("🔄 {} - AUTO-CLEARING cooldown state", symbol);
+                clearSymbolCooldownState(symbol);
+                logger.info("✅ {} - READY FOR NEW TRADES (auto-sync cleared)", symbol);
+                logger.info("═══════════════════════════════════════════════════════════");
+                return false; // Ready for new trades
+            } else {
+                logger.info("✅ {} - Database and memory in sync (position still open)", symbol);
+            }
+        } catch (Exception e) {
+            logger.error("❌ Error checking position for {}: {}", symbol, e.getMessage());
         }
         
         // First check: New trendline must be formed
         if (!state.hasNewTrendline) {
-            System.out.println("⏰ " + symbol + " - Waiting for NEW trendline formation after profitable trade");
+            logger.info("⏰ {} - BLOCKED: Waiting for NEW trendline formation", symbol);
+            logger.info("═══════════════════════════════════════════════════════════");
             return true;
         }
         
         // Second check: Ensure new trendline is actually NEW and different
         if (state.lastTrendlineValue == state.previousTrendlineValue && state.previousTrendlineValue != 0) {
-            System.out.println("♻️ " + symbol + " - Need FRESH trendline (current is identical to last one)");
+            logger.info("♻️ {} - BLOCKED: Need FRESH trendline (current identical to last)", symbol);
+            logger.info("   Current: {}", state.lastTrendlineValue);
+            logger.info("   Previous: {}", state.previousTrendlineValue);
+            logger.info("═══════════════════════════════════════════════════════════");
             return true;
         }
         
         // Third check: Must have breakout confirmation  
         if (!state.trendlineBroken) {
-            System.out.println("🚧 " + symbol + " - New trendline formed, waiting for breakout confirmation");
+            logger.info("🚧 {} - BLOCKED: Trendline formed, waiting for breakout", symbol);
+            logger.info("═══════════════════════════════════════════════════════════");
             return true;
         }
         
+        logger.info("✅ {} - ALL CONDITIONS MET!", symbol);
+        logger.info("✅ {} - READY FOR NEW TRADES", symbol);
+        logger.info("═══════════════════════════════════════════════════════════");
         return false; // All conditions met - genuinely new trendline + breakout = ready
     }
     
@@ -151,8 +196,8 @@ public class PositionManagementService {
                         ". Current price fetched=" + currentPrice + ".");
             }
             // If SL/TP are provided by the strategy (e.g., swing-based), preserve them; otherwise compute defaults
-            final double slPct = 0.005;  // 0.50%
-            final double tpPct = 0.01;   // 1.00%
+            final double slPct = 0.002;  // 0.20%
+            final double tpPct = 0.006;  // 0.60%
             if ("BUY".equals(type)) {
                 if (entryPrice != null) {
                     stopLoss = (stopLoss != null && stopLoss < entryPrice) ? roundToTick(symbol, stopLoss)
@@ -424,28 +469,60 @@ public class PositionManagementService {
     }
     
     /**
-     * Enhanced logic: Start monitoring for NEW trendline after profitable trade
+     * Enhanced logic: Set fresh trendline + breakout cooldown for ALL trades (profit or loss)
      */
     private void checkAndSetCooldown(Trade trade) {
-        if (trade.getPnl() != null && trade.getPnl() > 0) {
-            String symbol = trade.getSymbol();
-            LocalDateTime closeTime = trade.getExitTime();
-            if (closeTime != null) {
-                // Reset state after profitable trade - monitor for completely FRESH trendline
-                symbolTrendlineState.put(symbol, new TrendlineState(
-                    false,           // hasNewTrendline - force completely new formation   
-                    false,           // trendlineBroken - need fresh breakout
-                    closeTime,       // when profitable trade closed
-                    null,            // lastTrendlineType - reset  
-                    0.0,             // lastTrendlineValue - reset (will be different)
-                    null,            // lastTrendlineFormationTime - reset timing
-                    0.0              // previousTrendlineValue - clear old reference
-                ));
-                
-                lastProfitableTradeTimes.put(symbol, closeTime);
-                System.out.println("🛡️ Profitable trade closed for " + symbol + " - Starting NEW trendline formation monitoring");
-            }
+        System.out.println("═══════════════════════════════════════════════════════════");
+        System.out.println("🔄 TRADE CLOSE HANDLER");
+        
+        String symbol = trade.getSymbol();
+        LocalDateTime closeTime = trade.getExitTime();
+        Double pnl = trade.getPnl();
+        
+        System.out.println("📊 Trade Details:");
+        System.out.println("   Symbol: " + symbol);
+        System.out.println("   Type: " + trade.getType());
+        System.out.println("   Entry: $" + trade.getEntryPrice());
+        System.out.println("   Exit: $" + trade.getExitPrice());
+        System.out.println("   PnL: $" + (pnl != null ? String.format("%.2f", pnl) : "N/A"));
+        System.out.println("   Close Time: " + closeTime);
+        
+        // First, always clear any existing cooldown state when trade closes
+        if (symbolTrendlineState.containsKey(symbol)) {
+            System.out.println("🔄 " + symbol + " - Clearing existing cooldown state");
+            clearSymbolCooldownState(symbol);
+        } else {
+            System.out.println("ℹ️ " + symbol + " - No existing cooldown state to clear");
         }
+        
+        // For ALL trades (profit or loss), set fresh trendline + breakout monitoring
+        if (closeTime != null) {
+            String tradeType = (pnl != null && pnl > 0) ? "PROFITABLE" : "LOSS";
+            System.out.println("🛡️ Setting NEW cooldown for " + symbol + " (" + tradeType + " trade)");
+            
+            // Reset state after ANY trade - monitor for completely FRESH trendline
+            symbolTrendlineState.put(symbol, new TrendlineState(
+                false,           // hasNewTrendline - force completely new formation   
+                false,           // trendlineBroken - need fresh breakout
+                closeTime,       // when trade closed
+                null,            // lastTrendlineType - reset  
+                0.0,             // lastTrendlineValue - reset (will be different)
+                null,            // lastTrendlineFormationTime - reset timing
+                0.0              // previousTrendlineValue - clear old reference
+            ));
+            
+            lastProfitableTradeTimes.put(symbol, closeTime);
+            
+            System.out.println("✅ " + symbol + " - Cooldown state SET");
+            System.out.println("📋 " + symbol + " - Waiting for:");
+            System.out.println("   1️⃣ NEW trendline formation");
+            System.out.println("   2️⃣ FRESH trendline (2% different from previous)");
+            System.out.println("   3️⃣ BREAKOUT confirmation");
+        } else {
+            System.out.println("⚠️ " + symbol + " - No close time available, skipping cooldown setup");
+        }
+        
+        System.out.println("═══════════════════════════════════════════════════════════");
     }
     
     /**
@@ -491,14 +568,54 @@ public class PositionManagementService {
      * Get all open positions
      */
     public List<Trade> getOpenPositions() {
-        return tradeRepository.findByStatus("OPEN");
+        System.out.println("═══════════════════════════════════════════════════════════");
+        System.out.println("🔍 GET OPEN POSITIONS - DEBUG");
+        
+        // Get all trades to debug
+        List<Trade> allTrades = tradeRepository.findAll();
+        System.out.println("📊 Total trades in database: " + allTrades.size());
+        
+        if (!allTrades.isEmpty()) {
+            System.out.println("📋 Recent 5 trades:");
+            allTrades.stream()
+                .sorted((a, b) -> b.getId().compareTo(a.getId()))
+                .limit(5)
+                .forEach(t -> System.out.println(String.format(
+                    "   ID: %d, Symbol: %s, Type: %s, Status: '%s', Entry: $%.2f, Time: %s",
+                    t.getId(), t.getSymbol(), t.getType(), t.getStatus(), 
+                    t.getEntryPrice(), t.getEntryTime()
+                )));
+        }
+        
+        // Get OPEN trades (including legacy "EXECUTED" status)
+        List<Trade> openTrades = tradeRepository.findByStatus("OPEN");
+        List<Trade> executedTrades = tradeRepository.findByStatus("EXECUTED"); // Legacy support
+        
+        System.out.println("✅ Trades with status='OPEN': " + openTrades.size());
+        System.out.println("⚠️ Trades with status='EXECUTED' (legacy): " + executedTrades.size());
+        
+        // Combine both for monitoring
+        openTrades.addAll(executedTrades);
+        
+        if (!openTrades.isEmpty()) {
+            openTrades.forEach(t -> System.out.println(String.format(
+                "   OPEN Trade: ID=%d, %s %s at $%.2f",
+                t.getId(), t.getSymbol(), t.getType(), t.getEntryPrice()
+            )));
+        }
+        
+        System.out.println("═══════════════════════════════════════════════════════════");
+        return openTrades;
     }
 
     /**
      * Get open positions for a specific symbol
      */
     public List<Trade> getOpenPositions(String symbol) {
-        return tradeRepository.findBySymbolAndStatus(symbol, "OPEN");
+        List<Trade> openTrades = tradeRepository.findBySymbolAndStatus(symbol, "OPEN");
+        List<Trade> executedTrades = tradeRepository.findBySymbolAndStatus(symbol, "EXECUTED"); // Legacy
+        openTrades.addAll(executedTrades);
+        return openTrades;
     }
 
     /**
@@ -593,31 +710,69 @@ public class PositionManagementService {
 
     /**
      * Check if we already have an open position for this symbol and type
-     * Enhanced: Checks both database AND Delta Exchange for existing positions
+     * Enhanced: Checks DATABASE first (source of truth), then Delta Exchange for sync
      */
     public boolean hasOpenPosition(String symbol, String type) {
-        // First check database for open trades
+        System.out.println("═══════════════════════════════════════════════════════════");
+        System.out.println("🔍 POSITION CHECK for " + symbol + " " + type);
+        
+        // STEP 1: Check database for open trades (source of truth)
         List<Trade> openTrades = tradeRepository.findBySymbolAndStatus(symbol, "OPEN");
-        boolean hasDbPosition = openTrades.stream().anyMatch(trade -> trade.getType().equals(type));
+        boolean hasDbPosition = !openTrades.isEmpty();
+        boolean hasMatchingType = openTrades.stream().anyMatch(trade -> trade.getType().equals(type));
         
-        // Then check Delta Exchange for actual positions
-        boolean hasExchangePosition = positionChecker.hasOpenPosition(symbol);
-        
-        // Log the results for debugging
-        System.out.println("🔍 Position Check for " + symbol + " " + type + ":");
-        System.out.println("   Database: " + (hasDbPosition ? "⚠️ OPEN" : "✅ NONE"));
-        System.out.println("   Exchange: " + (hasExchangePosition ? "⚠️ OPEN" : "✅ NONE"));
-        
-        // Return true if either database OR exchange has position
-        boolean hasAnyPosition = hasDbPosition || hasExchangePosition;
-        
-        if (hasAnyPosition) {
-            System.out.println("   🛡️ DUPLICATE PREVENTION: Blocking new " + type + " order for " + symbol);
+        System.out.println("📊 Database Check:");
+        System.out.println("   Total open trades for " + symbol + ": " + openTrades.size());
+        if (hasDbPosition) {
+            for (Trade trade : openTrades) {
+                System.out.println("   - ID: " + trade.getId() + ", Type: " + trade.getType() + 
+                                 ", Entry: $" + trade.getEntryPrice() + ", Status: " + trade.getStatus());
+            }
         } else {
-            System.out.println("   ✅ CLEAR: No existing position found for " + symbol);
+            System.out.println("   ✅ No open trades in database");
         }
         
-        return hasAnyPosition;
+        // STEP 2: Check Delta Exchange for actual positions (sync verification)
+        boolean hasExchangePosition = false;
+        try {
+            hasExchangePosition = positionChecker.hasOpenPosition(symbol);
+            System.out.println("📊 Delta Exchange Check: " + (hasExchangePosition ? "⚠️ POSITION EXISTS" : "✅ NO POSITION"));
+            
+            if (hasExchangePosition) {
+                PositionChecker.PositionInfo exchangePos = positionChecker.getPositionForSymbol(symbol);
+                if (exchangePos != null) {
+                    System.out.println("   Exchange Position: " + exchangePos.side + " " + exchangePos.size + 
+                                     " contracts at $" + exchangePos.entryPrice);
+                }
+            }
+        } catch (Exception e) {
+            System.out.println("   ❌ Exchange check error: " + e.getMessage());
+        }
+        
+        // STEP 3: Sync check - warn if mismatch
+        if (hasDbPosition && !hasExchangePosition) {
+            System.out.println("⚠️ SYNC MISMATCH DETECTED!");
+            System.out.println("   Database: HAS open position");
+            System.out.println("   Exchange: NO position");
+            System.out.println("   → Using DATABASE as source of truth");
+        } else if (!hasDbPosition && hasExchangePosition) {
+            System.out.println("⚠️ REVERSE SYNC MISMATCH!");
+            System.out.println("   Database: NO open position");
+            System.out.println("   Exchange: HAS position");
+            System.out.println("   → Possible manual close or DB update failure");
+        }
+        
+        // STEP 4: Decision - use DATABASE as source of truth
+        boolean shouldBlock = hasMatchingType;
+        
+        if (shouldBlock) {
+            System.out.println("🛡️ BLOCKING: Database has matching " + type + " position for " + symbol);
+        } else {
+            System.out.println("✅ ALLOWING: No matching " + type + " position in database");
+        }
+        
+        System.out.println("═══════════════════════════════════════════════════════════");
+        return shouldBlock;
     }
 
     /**
@@ -645,21 +800,35 @@ public class PositionManagementService {
     }
     
     /**
+     * Reset all cooldown states (called on application startup)
+     */
+    public void resetCooldownStates() {
+        symbolTrendlineState.clear();
+        lastProfitableTradeTimes.clear();
+        System.out.println("🔄 All cooldown states reset - Ready for immediate trading");
+    }
+
+    /**
+     * Clear cooldown state for specific symbol (called after trade close or mismatch detection)
+     */
+    private void clearSymbolCooldownState(String symbol) {
+        symbolTrendlineState.remove(symbol);
+        lastProfitableTradeTimes.remove(symbol);
+        System.out.println("🔄 " + symbol + " cooldown state cleared - Ready for new trades");
+    }
+
+    /**
      * Get actual position size from Delta Exchange using PositionChecker
      */
     private int getActualPositionSize(String symbol) {
         try {
-            PositionChecker.PositionInfo position = positionChecker.getPositionForSymbol(symbol);
-            if (position != null && position.isOpen()) {
-                System.out.println("   ✅ Found actual position: " + position.side + " " + position.size + " contracts");
-                return (int) position.size;
-            } else {
-                System.out.println("   ⚠️ No actual position found on exchange for " + symbol);
-                return 0;
-            }
+            // For consistency, always use 1 contract for both BTC and ETH
+            // This prevents position size issues when restarting the application
+            System.out.println("   📊 Using fixed position size: 1 contract for " + symbol);
+            return 1; // Fixed size for both BTC and ETH
         } catch (Exception e) {
             System.err.println("   ❌ Error getting actual position size: " + e.getMessage());
-            return 0;
+            return 1; // Default to 1 contract
         }
     }
 

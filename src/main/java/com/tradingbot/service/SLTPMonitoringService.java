@@ -104,8 +104,10 @@ public class SLTPMonitoringService {
         LocalDateTime now = LocalDateTime.now();
         String timestamp = now.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
 
-        System.out.println("🛡️ SL/TP Monitoring Cycle #" + monitoringCycle + " - " + timestamp);
-        System.out.println("-".repeat(60));
+        System.out.println("═══════════════════════════════════════════════════════════");
+        System.out.println("🛡️ SL/TP MONITORING CYCLE #" + monitoringCycle);
+        System.out.println("⏰ Time: " + timestamp);
+        System.out.println("═══════════════════════════════════════════════════════════");
 
         try {
             // Get all open positions
@@ -113,11 +115,13 @@ public class SLTPMonitoringService {
 
             if (openTrades.isEmpty()) {
                 System.out.println("ℹ️ No open positions to monitor");
+                System.out.println("═══════════════════════════════════════════════════════════");
                 System.out.println();
                 return;
             }
 
-            System.out.println("📊 Monitoring " + openTrades.size() + " open positions...");
+            System.out.println("📊 Monitoring " + openTrades.size() + " open position(s)");
+            System.out.println("───────────────────────────────────────────────────────────");
 
             // Check each position
             for (Trade trade : openTrades) {
@@ -135,6 +139,7 @@ public class SLTPMonitoringService {
         }
 
         System.out.println("✅ SL/TP monitoring cycle completed");
+        System.out.println("═══════════════════════════════════════════════════════════");
         System.out.println();
     }
 
@@ -143,56 +148,77 @@ public class SLTPMonitoringService {
      */
     private void monitorTrade(Trade trade, String timestamp) {
         try {
-            System.out.println("🔍 Monitoring " + trade.getSymbol() + " " + trade.getType() + 
-                             " (ID: " + trade.getId() + ")");
+            System.out.println("🔍 Trade ID: " + trade.getId() + " | " + trade.getSymbol() + " " + trade.getType());
 
             // Get current price
             Double currentPrice = getCurrentPrice(trade.getSymbol());
             if (currentPrice == null) {
-                System.out.println("❌ Could not fetch price for " + trade.getSymbol());
+                System.out.println("   ❌ Could not fetch current price");
+                System.out.println("───────────────────────────────────────────────────────────");
                 return;
             }
 
-            System.out.println("💰 Current: $" + String.format("%.2f", currentPrice) + 
-                             " | Entry: $" + String.format("%.2f", trade.getEntryPrice()) + 
-                             " | SL: $" + String.format("%.2f", trade.getStopLoss()) + 
+            // Calculate P&L
+            Double pnl = trade.calculatePnL(currentPrice);
+            String pnlStatus = (pnl >= 0) ? "📈 +" : "📉 ";
+            
+            System.out.println("   💰 Current: $" + String.format("%.2f", currentPrice) + 
+                             " | Entry: $" + String.format("%.2f", trade.getEntryPrice()));
+            System.out.println("   🎯 SL: $" + String.format("%.2f", trade.getStopLoss()) + 
                              " | TP: $" + String.format("%.2f", trade.getTakeProfit()));
+            System.out.println("   " + pnlStatus + "P&L: $" + String.format("%.2f", pnl));
 
             // Check for stop loss hit
             if (trade.isStopLossHit(currentPrice)) {
-                System.out.println("🔴 STOP LOSS HIT for " + trade.getSymbol() + "!");
+                System.out.println("   ╔═══════════════════════════════════════════════════════╗");
+                System.out.println("   ║           🔴 STOP LOSS HIT!                          ║");
+                System.out.println("   ╚═══════════════════════════════════════════════════════╝");
+                System.out.println("   📊 Exit Price: $" + String.format("%.2f", currentPrice));
+                System.out.println("   📉 Final P&L: $" + String.format("%.2f", pnl));
                 
                 String exitReason = "Stop Loss Hit - Price: $" + String.format("%.2f", currentPrice);
                 positionService.closePosition(trade.getId(), currentPrice, exitReason);
                 
-                // 🆕 State RESET for position tracking
+                // State RESET for position tracking
                 resetPositionState(trade.getSymbol());
                 
                 // Send immediate alert
                 sendStopLossAlert(trade, currentPrice, timestamp);
+                
+                System.out.println("   ✅ Position closed and state reset");
+                System.out.println("───────────────────────────────────────────────────────────");
                 return;
             }
 
             // Check for take profit hit
             if (trade.isTakeProfitHit(currentPrice)) {
-                System.out.println("🟢 TAKE PROFIT HIT for " + trade.getSymbol() + "!");
+                System.out.println("   ╔═══════════════════════════════════════════════════════╗");
+                System.out.println("   ║          🟢 TAKE PROFIT HIT!                         ║");
+                System.out.println("   ╚═══════════════════════════════════════════════════════╝");
+                System.out.println("   📊 Exit Price: $" + String.format("%.2f", currentPrice));
+                System.out.println("   📈 Final P&L: $" + String.format("%.2f", pnl));
                 
                 String exitReason = "Take Profit Hit - Price: $" + String.format("%.2f", currentPrice);
                 positionService.closePosition(trade.getId(), currentPrice, exitReason);
                 
-                // 🆕 State RESET for position tracking
+                // State RESET for position tracking
                 resetPositionState(trade.getSymbol());
                 
                 // Send immediate alert
                 sendTakeProfitAlert(trade, currentPrice, timestamp);
+                
+                System.out.println("   ✅ Position closed and state reset");
+                System.out.println("───────────────────────────────────────────────────────────");
                 return;
             }
 
             // Check if close to SL/TP levels (warnings)
             checkProximityWarnings(trade, currentPrice);
+            System.out.println("───────────────────────────────────────────────────────────");
 
         } catch (Exception e) {
-            System.err.println("❌ Error monitoring trade " + trade.getId() + ": " + e.getMessage());
+            System.err.println("   ❌ Error monitoring trade " + trade.getId() + ": " + e.getMessage());
+            System.out.println("───────────────────────────────────────────────────────────");
         }
     }
 

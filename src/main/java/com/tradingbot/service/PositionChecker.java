@@ -212,6 +212,8 @@ public class PositionChecker {
             
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
             
+            logger.debug("🔍 Position check API response for {}: Status={}", symbol, response.statusCode());
+            
             if (response.statusCode() == 200) {
                 JsonNode jsonResponse = objectMapper.readTree(response.body());
                 if (jsonResponse.has("success") && jsonResponse.get("success").asBoolean()) {
@@ -240,7 +242,9 @@ public class PositionChecker {
             
         } catch (Exception e) {
             logger.error("❌ Error checking position for {}: {}", symbol, e.getMessage());
-            return false; // Assume no position if error occurs
+            logger.error("⚠️ CRITICAL: Cannot verify existing positions - blocking new orders to prevent duplicates");
+            // Return true to be safe and block new orders when we can't verify positions
+            return true; // Block new orders if we can't check existing positions
         }
     }
     
