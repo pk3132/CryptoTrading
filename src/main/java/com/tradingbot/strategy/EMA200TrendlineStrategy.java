@@ -43,6 +43,17 @@ public class EMA200TrendlineStrategy {
     private Map<String, String> activePosition = new HashMap<>(); // symbol -> BUY/SELL/NONE
     private Map<String, Integer> lastExitCandleIndex = new HashMap<>(); // symbol -> candle index at exit
     private static final int COOLDOWN_CANDLES = 5; // wait 5 candles after exit
+    
+    // ================== BREAKOUT TRACKING ==================
+    private Map<String, Integer> lastBreakoutCandle = new HashMap<>(); // symbol -> candle index of last breakout
+    private Map<String, Double> lastBreakoutLevel = new HashMap<>();   // symbol -> level used for last breakout
+    
+    // ================== BREAKOUT + RETEST FILTER ==================
+    private Map<String, Boolean> breakoutDetected = new HashMap<>(); // symbol -> breakout detected flag
+    private Map<String, Double> breakoutResistanceLevel = new HashMap<>(); // symbol -> resistance level for retest
+    private Map<String, Boolean> breakdownDetected = new HashMap<>(); // symbol -> breakdown detected flag
+    private Map<String, Double> breakdownSupportLevel = new HashMap<>(); // symbol -> support level for retest
+    private static final int RETEST_CANDLES_WINDOW = 2; // wait max 2 candles for retest
     // ========================================================
     
     // Data structures
@@ -342,97 +353,230 @@ public class EMA200TrendlineStrategy {
         logger.info("🎯 {} trendline status: New Resistance: {}, New Support: {}", 
                    symbol, hasNewResistance, hasNewSupport);
 
+        // ==================== STRATEGY QUALITY FILTERS ====================
+
+        // Fetch slope values for debugging and validation
+        double resistanceSlope = (resistanceLine != null) ? resistanceLine.slope : 0.0;
+        double supportSlope = (supportLine != null) ? supportLine.slope : 0.0;
+
+        // Get time of current candle (UTC hour)
+        int currentHour = lastCandle.datetime.getHour();
+
+        // Calculate EMA proximity and zone gap
+        double emaProximity = Math.abs(currentPrice - emaValue);
+        double zoneWidth = Math.abs(resistanceValue - supportValue);
+
+        // Log the computed metrics
+        logger.info("🧠 {} Quality Check: EMA-Proximity={}, ZoneWidth={}, ResistanceSlope={}, SupportSlope={}, Hour={}",
+                symbol,
+                String.format("%.2f", emaProximity),
+                String.format("%.2f", zoneWidth),
+                String.format("%.4f", resistanceSlope),
+                String.format("%.4f", supportSlope),
+                currentHour
+        );
+
+        // 1️⃣ Filter: Skip very flat structures (avoid range-bound fakeouts)
+        if (Math.abs(resistanceSlope) < 0.3 && Math.abs(supportSlope) < 0.3) {
+            logger.info("⚠️ {} - Flat structure detected (slope too small). Skipping signal.", symbol);
+            return signals;
+        }
+
+        // 2️⃣ Filter: Skip narrow price zones (no meaningful breakout distance)
+        if (zoneWidth < (currentPrice * 0.002)) { // < 0.2% gap
+            logger.info("⚠️ {} - Narrow support/resistance zone (width: {}). Skipping.", symbol, String.format("%.2f", zoneWidth));
+            return signals;
+        }
+
+        // 3️⃣ Filter: Skip trades near EMA200 (avoid chop zones)
+        if (emaProximity < (currentPrice * 0.0015)) { // within 0.15%
+            logger.info("⚠️ {} - Too close to EMA200 (within chop zone). Skipping trade.", symbol);
+            return signals;
+        }
+
+        // 4️⃣ Filter: Require slope alignment (both up or both down)
+        if ((resistanceSlope > 0 && supportSlope < 0) || (resistanceSlope < 0 && supportSlope > 0)) {
+            logger.info("⚠️ {} - Mixed slope directions (resistance={} / support={}). Skipping.", symbol, resistanceSlope, supportSlope);
+            return signals;
+        }
+
+        // 5️⃣ Filter: Avoid low-liquidity hours (Asia session)
+        if (currentHour < 7 || currentHour > 22) {
+            logger.info("🌙 {} - Low liquidity hour detected ({}h). Skipping trade signal.", symbol, currentHour);
+            return signals;
+        }
+
+        // 6️⃣ Optional Filter: Volume Confirmation (only trade strong candles)
+        double avgVol = candles.subList(Math.max(0, candles.size() - 10), candles.size())
+                .stream()
+                .mapToDouble(c -> c.volume)
+                .average()
+                .orElse(0);
+
+        if (lastCandle.volume < 1.5 * avgVol) {
+            logger.info("📉 {} - Weak breakout volume ({} < 1.5x avg {}). Skipping signal.", symbol,
+                    String.format("%.2f", lastCandle.volume),
+                    String.format("%.2f", avgVol));
+            return signals;
+        }
+
+        // ================================================================
+        // ✅ If passed all filters → proceed to breakout/retest detection logic
+        logger.info("✅ {} passed quality filters - continuing to breakout detection.", symbol);
+
         // Trading Logic: THREE-STEP PROCESS  
         // STEP 1: Check EMA200 Filter FIRST
         // STEP 2: Confirm FRESH trendline is prepared
         // STEP 3: Only then, check trendline breakout
         
-        // BUY Logic: BTC > EMA200 FIRST, then check Resistance Breakout
+        // BUY Logic: BTC > EMA200 FIRST, then check Resistance Breakout + Retest
         if (currentPrice > emaValue) {
             // STEP 1 PASSED: BTC > EMA200 ✅ 
-            // STEP 2: Check resistance breakout
+            // STEP 2: Check resistance breakout + retest filter
             if (resistanceLine != null && hasNewResistance) {
-                boolean breakoutConfirmed = false;
-
-                if (REQUIRE_CLOSE_BREAKOUT) {
-                    if (lastCandle.close > resistanceValue) {
-                        breakoutConfirmed = true;
-                        logger.info("✅ {} BUY Breakout Confirmed by CLOSE: Close={} > Resistance={}", 
+                
+                // ================== BREAKOUT + RETEST FILTER ==================
+                boolean breakoutDetectedNow = false;
+                boolean retestConfirmed = false;
+                
+                // Check if breakout was detected in previous candle
+                Boolean wasBreakoutDetected = breakoutDetected.get(symbol);
+                Double breakoutLevel = breakoutResistanceLevel.get(symbol);
+                
+                // Step 1: Detect fresh breakout (close > resistance)
+                if (lastCandle.close > resistanceValue) {
+                    if (wasBreakoutDetected == null || !wasBreakoutDetected) {
+                        // Fresh breakout detected
+                        breakoutDetected.put(symbol, true);
+                        breakoutResistanceLevel.put(symbol, resistanceValue);
+                        logger.info("🔥 {} BUY Breakout Detected: Close={} > Resistance={}. Waiting for retest...", 
                                     symbol, lastCandle.close, resistanceValue);
-                    } else {
-                        logger.info("❌ {} BUY Breakout Rejected: Candle closed below resistance. "
-                                   + "Close={} <= Resistance={} (Wick may have crossed)", 
-                                    symbol, lastCandle.close, resistanceValue);
-                    }
-                } else {
-                    if (currentPrice > resistanceValue) {
-                        breakoutConfirmed = true;
-                        logger.info("✅ {} BUY Breakout Confirmed by PRICE Wick: Price={} > Resistance={}", 
-                                    symbol, currentPrice, resistanceValue);
-                    } else {
-                        logger.info("❌ {} BUY Breakout Rejected: Price did not cross resistance. "
-                                   + "Price={} <= Resistance={}", 
-                                    symbol, currentPrice, resistanceValue);
                     }
                 }
+                
+                // Step 2: Check for retest confirmation (if breakout was detected)
+                if (Boolean.TRUE.equals(wasBreakoutDetected) && breakoutLevel != null) {
+                    // Check if current candle's low retests the breakout level and holds
+                    if (lastCandle.low <= breakoutLevel && lastCandle.close >= breakoutLevel) {
+                        retestConfirmed = true;
+                        logger.info("✅ {} BUY Retest Confirmed: Low={} <= Level={} <= Close={}", 
+                                    symbol, lastCandle.low, breakoutLevel, lastCandle.close);
+                    } else if (lastCandle.close > breakoutLevel * 1.005) { // 0.5% above breakout
+                        // Price moved too far up, breakout may be invalid
+                        breakoutDetected.put(symbol, false);
+                        breakoutResistanceLevel.remove(symbol);
+                        logger.info("❌ {} BUY Breakout Invalidated: Price moved too far from level", symbol);
+                    }
+                }
+                
+                // Step 3: Generate signal only after confirmed retest
+                if (retestConfirmed && !currentPos.equals("BUY")) {
+                    // Duplicate breakout guard
+                    Integer lastIdx = lastBreakoutCandle.get(symbol);
+                    Double lastLevel = lastBreakoutLevel.get(symbol);
 
-                if (breakoutConfirmed && !currentPos.equals("BUY")) {
-                    double stopLoss = currentPrice * (1 - STOP_LOSS_PCT);
-                    double takeProfit = currentPrice * (1 + TAKE_PROFIT_PCT);
-                    signals.add(new TradeSignal("BUY", currentPrice, stopLoss, takeProfit,
-                        String.format("BUY: %s > EMA200 + Resistance Breakout at Close %.2f vs Resistance %.2f", 
-                                      symbol, lastCandle.close, resistanceValue)));
-                    
-                    // Record position
-                    activePosition.put(symbol, "BUY");
-                    logger.info("🎯 {} position set to BUY", symbol);
+                    if (lastIdx != null && lastIdx == x_now &&
+                        lastLevel != null && Math.abs(lastLevel - resistanceValue) < 1e-6) {
+                        logger.info("⏸️ {} - Skipping duplicate BUY breakout (candle={}, level={})",
+                                    symbol, x_now, resistanceValue);
+                    } else {
+                        // Record breakout
+                        lastBreakoutCandle.put(symbol, x_now);
+                        lastBreakoutLevel.put(symbol, resistanceValue);
+
+                        double stopLoss = currentPrice * (1 - STOP_LOSS_PCT);
+                        double takeProfit = currentPrice * (1 + TAKE_PROFIT_PCT);
+
+                        signals.add(new TradeSignal("BUY", currentPrice, stopLoss, takeProfit,
+                            String.format("BUY: %s > EMA200 + Resistance Breakout+Retest at Close %.2f vs Resistance %.2f",
+                                          symbol, lastCandle.close, resistanceValue)));
+
+                        activePosition.put(symbol, "BUY");
+                        // Clear breakout tracking after successful entry
+                        breakoutDetected.put(symbol, false);
+                        breakoutResistanceLevel.remove(symbol);
+                        logger.info("🎯 {} position set to BUY after confirmed retest", symbol);
+                    }
                 } else if (currentPos.equals("BUY")) {
                     logger.debug("🔄 {} - Already in BUY position, skipping duplicate", symbol);
+                } else if (Boolean.TRUE.equals(wasBreakoutDetected)) {
+                    logger.info("⏳ {} - Breakout detected, waiting for retest confirmation...", symbol);
                 }
             }
         }
         
-        // SELL Logic: BTC < EMA200 FIRST, then check Support Breakout
+        // SELL Logic: BTC < EMA200 FIRST, then check Support Breakdown + Retest
         if (currentPrice < emaValue) {
             // STEP 1 PASSED: BTC < EMA200 ✅  
-            // STEP 2: Check support breakout
+            // STEP 2: Check support breakdown + retest filter
             if (supportLine != null && hasNewSupport) {
-                boolean breakoutConfirmed = false;
-
-                if (REQUIRE_CLOSE_BREAKOUT) {
-                    if (lastCandle.close < supportValue) {
-                        breakoutConfirmed = true;
-                        logger.info("✅ {} SELL Breakout Confirmed by CLOSE: Close={} < Support={}", 
+                
+                // ================== BREAKDOWN + RETEST FILTER ==================
+                boolean breakdownDetectedNow = false;
+                boolean retestConfirmed = false;
+                
+                // Check if breakdown was detected in previous candle
+                Boolean wasBreakdownDetected = breakdownDetected.get(symbol);
+                Double breakdownLevel = breakdownSupportLevel.get(symbol);
+                
+                // Step 1: Detect fresh breakdown (close < support)
+                if (lastCandle.close < supportValue) {
+                    if (wasBreakdownDetected == null || !wasBreakdownDetected) {
+                        // Fresh breakdown detected
+                        breakdownDetected.put(symbol, true);
+                        breakdownSupportLevel.put(symbol, supportValue);
+                        logger.info("🔥 {} SELL Breakdown Detected: Close={} < Support={}. Waiting for retest...", 
                                     symbol, lastCandle.close, supportValue);
-                    } else {
-                        logger.info("❌ {} SELL Breakout Rejected: Candle closed above support. "
-                                   + "Close={} >= Support={} (Wick may have crossed)", 
-                                    symbol, lastCandle.close, supportValue);
-                    }
-                } else {
-                    if (currentPrice < supportValue) {
-                        breakoutConfirmed = true;
-                        logger.info("✅ {} SELL Breakout Confirmed by PRICE Wick: Price={} < Support={}", 
-                                    symbol, currentPrice, supportValue);
-                    } else {
-                        logger.info("❌ {} SELL Breakout Rejected: Price did not cross support. "
-                                   + "Price={} >= Support={}", 
-                                    symbol, currentPrice, supportValue);
                     }
                 }
+                
+                // Step 2: Check for retest confirmation (if breakdown was detected)
+                if (Boolean.TRUE.equals(wasBreakdownDetected) && breakdownLevel != null) {
+                    // Check if current candle's high retests the breakdown level and holds
+                    if (lastCandle.high >= breakdownLevel && lastCandle.close <= breakdownLevel) {
+                        retestConfirmed = true;
+                        logger.info("✅ {} SELL Retest Confirmed: High={} >= Level={} >= Close={}", 
+                                    symbol, lastCandle.high, breakdownLevel, lastCandle.close);
+                    } else if (lastCandle.close < breakdownLevel * 0.995) { // 0.5% below breakdown
+                        // Price moved too far down, breakdown may be invalid
+                        breakdownDetected.put(symbol, false);
+                        breakdownSupportLevel.remove(symbol);
+                        logger.info("❌ {} SELL Breakdown Invalidated: Price moved too far from level", symbol);
+                    }
+                }
+                
+                // Step 3: Generate signal only after confirmed retest
+                if (retestConfirmed && !currentPos.equals("SELL")) {
+                    // Duplicate breakdown guard
+                    Integer lastIdx = lastBreakoutCandle.get(symbol);
+                    Double lastLevel = lastBreakoutLevel.get(symbol);
 
-                if (breakoutConfirmed && !currentPos.equals("SELL")) {
-                    double stopLoss = currentPrice * (1 + STOP_LOSS_PCT);
-                    double takeProfit = currentPrice * (1 - TAKE_PROFIT_PCT);
-                    signals.add(new TradeSignal("SELL", currentPrice, stopLoss, takeProfit,
-                        String.format("SELL: %s < EMA200 + Support Breakdown at Close %.2f vs Support %.2f", 
-                                      symbol, lastCandle.close, supportValue)));
-                    
-                    // Record position
-                    activePosition.put(symbol, "SELL");
-                    logger.info("🎯 {} position set to SELL", symbol);
+                    if (lastIdx != null && lastIdx == x_now &&
+                        lastLevel != null && Math.abs(lastLevel - supportValue) < 1e-6) {
+                        logger.info("⏸️ {} - Skipping duplicate SELL breakdown (candle={}, level={})",
+                                    symbol, x_now, supportValue);
+                    } else {
+                        // Record breakdown
+                        lastBreakoutCandle.put(symbol, x_now);
+                        lastBreakoutLevel.put(symbol, supportValue);
+
+                        double stopLoss = currentPrice * (1 + STOP_LOSS_PCT);
+                        double takeProfit = currentPrice * (1 - TAKE_PROFIT_PCT);
+
+                        signals.add(new TradeSignal("SELL", currentPrice, stopLoss, takeProfit,
+                            String.format("SELL: %s < EMA200 + Support Breakdown+Retest at Close %.2f vs Support %.2f",
+                                          symbol, lastCandle.close, supportValue)));
+
+                        activePosition.put(symbol, "SELL");
+                        // Clear breakdown tracking after successful entry
+                        breakdownDetected.put(symbol, false);
+                        breakdownSupportLevel.remove(symbol);
+                        logger.info("🎯 {} position set to SELL after confirmed retest", symbol);
+                    }
                 } else if (currentPos.equals("SELL")) {
                     logger.debug("🔄 {} - Already in SELL position, skipping duplicate", symbol);
+                } else if (Boolean.TRUE.equals(wasBreakdownDetected)) {
+                    logger.info("⏳ {} - Breakdown detected, waiting for retest confirmation...", symbol);
                 }
             }
         }
@@ -763,6 +907,15 @@ public class EMA200TrendlineStrategy {
      */
     public void closeTrade(String symbol, String reason) {
         activePosition.put(symbol, "NONE"); // reset position
+        
+        // Clear breakout/breakdown tracking when trade closes
+        lastBreakoutCandle.remove(symbol);
+        lastBreakoutLevel.remove(symbol);
+        breakoutDetected.remove(symbol);
+        breakoutResistanceLevel.remove(symbol);
+        breakdownDetected.remove(symbol);
+        breakdownSupportLevel.remove(symbol);
+        
         List<Candle> candles = candlesData.get(symbol);
         if (candles != null && !candles.isEmpty()) {
             int exitIndex = candles.size() - 1; // index of the exit candle
@@ -772,6 +925,7 @@ public class EMA200TrendlineStrategy {
                         symbol, exitIndex, reason);
             logger.info("   📅 Exit candle time: {}", 
                        LocalDateTime.ofEpochSecond(candles.get(exitIndex).time, 0, ZoneOffset.UTC).toString());
+            logger.info("   🔄 Breakout/breakdown tracking cleared for new entries");
         } else {
             // if no candle present, remove any previous cooldown to avoid permanent block
             lastExitCandleIndex.remove(symbol);
