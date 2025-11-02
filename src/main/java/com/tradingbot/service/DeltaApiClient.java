@@ -99,6 +99,41 @@ public class DeltaApiClient {
     }
 
     /**
+     * Get ticker data for a symbol (includes volume, mark price, etc.)
+     */
+    public Map<String, Object> getTickerData(String symbol) {
+        try {
+            String url = MARKET_DATA_URL + "/tickers?symbol=" + symbol;
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("Accept", "application/json");
+            HttpEntity<String> entity = new HttpEntity<>(headers);
+
+            ResponseEntity<Map> response = restTemplate.exchange(url, HttpMethod.GET, entity, Map.class);
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                Object resultObj = response.getBody().get("result");
+                if (resultObj instanceof java.util.List) {
+                    java.util.List list = (java.util.List) resultObj;
+                    
+                    // Find the correct symbol in the list
+                    for (Object item : list) {
+                        if (item instanceof java.util.Map) {
+                            java.util.Map itemMap = (java.util.Map) item;
+                            String itemSymbol = (String) itemMap.get("symbol");
+                            if (symbol.equals(itemSymbol)) {
+                                return itemMap; // Return full ticker data
+                            }
+                        }
+                    }
+                }
+            }
+            return null;
+        } catch (Exception e) {
+            System.err.println("❌ Error fetching ticker data for " + symbol + ": " + e.getMessage());
+            return null;
+        }
+    }
+
+    /**
      * Get current mark price for a symbol from tickers endpoint
      */
     public Double getCurrentMarkPrice(String symbol) {

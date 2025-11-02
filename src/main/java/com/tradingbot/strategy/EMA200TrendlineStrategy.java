@@ -33,8 +33,9 @@ public class EMA200TrendlineStrategy {
     private static final int LOOKBACK_PERIOD = 50;
     private static final int EMA_PERIOD = 200;
     private static final double STOP_LOSS_PCT = 0.002; // 0.20%
-    private static final double TAKE_PROFIT_PCT = 0.006; // 0.60%
+    private static final double TAKE_PROFIT_PCT = 0.002; // 0.20%
     private static final int SWING_POINTS_FOR_TRENDLINE = 3; // Use last 3 swing points for more robust trendlines
+    private static final int SWING_LOOKBACK = 5; // Check 5 candles on each side for stronger swing detection
     private static final boolean REQUIRE_CLOSE_BREAKOUT = true; // Require close candle breakout, not wick
     private static final double FRESH_TRENDLINE_MIN_DISTANCE = 0.002; // 0.2% minimum distance for NEW trendlines 
     private static final int MIN_CANDLES_BETWEEN_FORMATIONS = 5; // Minimum candles before considering new trendline
@@ -119,12 +120,53 @@ public class EMA200TrendlineStrategy {
     private final Map<String, List<Candle>> candlesData;
     private HttpClient httpClient;
     private ObjectMapper objectMapper;
+
+    @Autowired
+    private com.tradingbot.service.DeltaApiClient deltaApiClient;
+
     
     public EMA200TrendlineStrategy() {
         this.candlesData = new HashMap<>();
         this.httpClient = HttpClient.newHttpClient();
         this.objectMapper = new ObjectMapper();
     }
+
+    public Double getHigherTimeframeEma200(String symbol, String resolution) {
+        try {
+            long now = System.currentTimeMillis() / 1000;
+            long secondsPerCandle;
+            switch (resolution) {
+                case "15m": secondsPerCandle = 900L; break;
+                case "5m": secondsPerCandle = 300L; break;
+                case "1h": secondsPerCandle = 3600L; break;
+                default: secondsPerCandle = 60L; // 1m
+            }
+            long start = now - (500L * secondsPerCandle);
+            List<Map<String, Object>> ohlcv = deltaApiClient.fetchOhlcv(symbol, resolution, start, now);
+            if (ohlcv == null || ohlcv.size() < EMA_PERIOD) {
+                logger.warn("⚠️ {} {} - Insufficient candles: {}", symbol, resolution, ohlcv == null ? "null" : ohlcv.size());
+                return null;
+            }
+            // Build close prices list
+            List<Double> closes = new ArrayList<>(ohlcv.size());
+            for (Map<String, Object> c : ohlcv) {
+                Object close = c.get("close");
+                if (close instanceof Number) {
+                    closes.add(((Number) close).doubleValue());
+                }
+            }
+            if (closes.size() < EMA_PERIOD) return null;
+            
+            double ema = EMA200Calculator.getEMA200(closes.subList(Math.max(0, closes.size() - 500), closes.size()));
+            logger.info("📊 {} {} EMA200 calculated: {} (from {} candles)", symbol, resolution, String.format("%.2f", ema), closes.size());
+            return ema;
+        } catch (Exception e) {
+            logger.error("❌ Error calculating EMA200 for {} {}: {}", symbol, resolution, e.getMessage());
+            return null;
+        }
+    }
+
+    // SL/TP now strictly percentage-based (rollback from points)
 
     public void addCandleData(String symbol, List<Map<String, Object>> rawCandles) {
         List<Candle> newCandles = new ArrayList<>();
@@ -256,7 +298,7 @@ public class EMA200TrendlineStrategy {
         }
 
         Candle lastCandle = candles.get(x_now);
-        double emaValue = lastCandle.ema200; // Use EMA from last full candle
+        double emaValue = lastCandle.ema200;
 
         // Build trendlines with last N swing highs/lows for more robust trendlines
         List<SwingPoint> recentHighs = new ArrayList<>();
@@ -347,7 +389,7 @@ public class EMA200TrendlineStrategy {
         // STEP 2: Confirm FRESH trendline is prepared
         // STEP 3: Only then, check trendline breakout
         
-        // BUY Logic: BTC > EMA200 FIRST, then check Resistance Breakout
+        // BUY Logic: Price above EMA200 + Resistance Breakout on 15m
         if (currentPrice > emaValue) {
             // STEP 1 PASSED: BTC > EMA200 ✅ 
             // STEP 2: Check resistance breakout
@@ -392,7 +434,7 @@ public class EMA200TrendlineStrategy {
             }
         }
         
-        // SELL Logic: BTC < EMA200 FIRST, then check Support Breakout
+        // SELL Logic: Price below EMA200 + Support Breakout on 15m
         if (currentPrice < emaValue) {
             // STEP 1 PASSED: BTC < EMA200 ✅  
             // STEP 2: Check support breakout
@@ -502,18 +544,29 @@ public class EMA200TrendlineStrategy {
         List<SwingPoint> highs = new ArrayList<>();
         List<SwingPoint> lows = new ArrayList<>();
         
-        // Improved swing point detection based on sample code
-        for (int i = 1; i < candles.size() - 1; i++) {
-            // Swing High: high > previous high AND high > next high
-            if (candles.get(i).high > candles.get(i-1).high &&
-                candles.get(i).high > candles.get(i+1).high) {
+        // Enhanced swing point detection - check multiple candles on each side
+        for (int i = SWING_LOOKBACK; i < candles.size() - SWING_LOOKBACK; i++) {
+            boolean isSwingHigh = true;
+            boolean isSwingLow = true;
+            
+            // Check if current candle is higher/lower than SWING_LOOKBACK candles on each side
+            for (int j = 1; j <= SWING_LOOKBACK; j++) {
+                if (candles.get(i).high <= candles.get(i - j).high || 
+                    candles.get(i).high <= candles.get(i + j).high) {
+                    isSwingHigh = false;
+                }
+                if (candles.get(i).low >= candles.get(i - j).low || 
+                    candles.get(i).low >= candles.get(i + j).low) {
+                    isSwingLow = false;
+                }
+            }
+            
+            if (isSwingHigh) {
                 highs.add(new SwingPoint(i, candles.get(i).high));
                 candles.get(i).swingHigh = candles.get(i).high;
             }
             
-            // Swing Low: low < previous low AND low < next low
-            if (candles.get(i).low < candles.get(i-1).low &&
-                candles.get(i).low < candles.get(i+1).low) {
+            if (isSwingLow) {
                 lows.add(new SwingPoint(i, candles.get(i).low));
                 candles.get(i).swingLow = candles.get(i).low;
             }

@@ -48,7 +48,7 @@ public class DualStrategySchedulerService {
     
     // Symbols to monitor
     private static final String[] SYMBOLS_TO_MONITOR = {"BTCUSD", "ETHUSD"};
-    private static final String TIMEFRAME = "1m";
+    private static final String TIMEFRAME = "15m";
     // EMA 200 calculation candles (500 candles for both)
     private static final int BTC_EMA_CANDLES = 500;
     private static final int ETH_EMA_CANDLES = 500;
@@ -73,7 +73,7 @@ public class DualStrategySchedulerService {
         logger.info("🎯 EMA 200 + TRENDLINE STRATEGY EXECUTION #{} - {}", strategyCycles, timestamp);
         logger.info("📊 Strategy: EMA 200 + Trendline Breakout");
         logger.info("📈 Timeframe: 15 minutes");
-        logger.info("⚡ Risk-Reward: 1:3 (0.2% SL, 0.6% TP)");
+        logger.info("⚡ Risk-Reward: 1:1 (0.2% SL, 0.2% TP)");
         logger.info("🔍 Features: EMA 200 Filter, Swing Points, Trendline Breakouts");
         logger.debug("Monitoring symbols: {}", String.join(", ", SYMBOLS_TO_MONITOR));
         
@@ -114,10 +114,10 @@ public class DualStrategySchedulerService {
             // Get EMA candles for each symbol (optimized for chart matching)
             int emaCandles = symbol.equals("BTCUSD") ? BTC_EMA_CANDLES : ETH_EMA_CANDLES;
             
-            // Get historical data for EMA 200 calculation (1m candles)
+            // Get historical data for EMA 200 calculation (15m candles)
             logger.debug("📊 Fetching historical data for {} (EMA 200 needs {} candles)", symbol, emaCandles);
             long now = System.currentTimeMillis() / 1000;
-            long start = now - (emaCandles * 60); // 1 minute per candle
+            long start = now - (emaCandles * 900); // 15 minutes per candle
             
             List<Map<String, Object>> candles = deltaApiClient.fetchOhlcv(symbol, TIMEFRAME, start, now);
             if (candles == null || candles.isEmpty()) {
@@ -277,8 +277,8 @@ public class DualStrategySchedulerService {
                 📊 *EMA 200 + Trendline Strategy Status*
                 
                 🎯 *Strategy:* %s (Cycles: %d)
-                📈 *Timeframe:* 1 minute
-                ⚡ *Risk-Reward:* 1:3 (0.2%% SL, 0.6%% TP)
+                📈 *Timeframe:* 15 minutes
+                ⚡ *Risk-Reward:* 1:1 (0.2%% SL, 0.2%% TP)
                 
                 🔍 *Strategy Features:*
                 • EMA 200 Trend Filter (BTC: 500, ETH: 500 candles)
